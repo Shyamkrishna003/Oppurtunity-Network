@@ -1,0 +1,100 @@
+name: opportunity-network
+
+x-backend: &backend
+  build: ./backend
+  env_file: .env
+  volumes:
+    - ./backend:/app
+
+x-datastores-ready: &datastores-ready
+  postgres:
+    condition: service_healthy
+  redis:
+    condition: service_healthy
+
+x-app-ready: &app-ready
+  <<: *datastores-ready
+  migrate:
+    condition: service_completed_successfully
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    <<: *backend
+    command: python manage.py migrate --noinput
+    depends_on: *datastores-ready
+    restart: "no"
+
+  backend:
+    <<: *backend
+    command: python manage.py runserver 0.0.0.0:8000
+    depends_on: *app-ready
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz', timeout=2)"
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+
+  worker:
+    <<: *backend
+    command: celery -A config worker --loglevel info --queues default,email,notifications,scheduled,analytics
+    depends_on: *app-ready
+
+  # Exactly one beat instance may run, or scheduled tasks fire more than once.
+  beat:
+    <<: *backend
+    command: celery -A config beat --loglevel info --schedule /tmp/celerybeat-schedule
+    depends_on: *app-ready
+
+  frontend:
+    build: ./frontend
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+
+  nginx:
+    image: nginx:1.29-alpine
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    volumes:
+      - ./docker/nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
+
+volumes:
+  postgres_data:
+  frontend_node_modules:

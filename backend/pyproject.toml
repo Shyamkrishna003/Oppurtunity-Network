@@ -1,0 +1,70 @@
+[project]
+name = "opportunity-network-backend"
+version = "0.1.0"
+description = "Opportunity Network API, WebSocket, and background workers"
+requires-python = ">=3.14"
+dependencies = [
+    "argon2-cffi>=25.1.0",
+    "celery[redis]>=5.6.3",
+    "channels-redis>=4.3.0",
+    "channels[daphne]>=4.3.2",
+    "django>=5.2,<5.3",
+    "django-environ>=0.14.0",
+    "djangorestframework>=3.18.1",
+    "drf-spectacular>=0.30.0",
+    "psycopg[binary]>=3.3.6",
+    "redis>=6.4.0",
+    "structlog>=26.1.0",
+]
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = [
+    "celery-types>=0.26.0",
+    "django-stubs[compatible-mypy]>=6.1.2",
+    "djangorestframework-stubs>=3.18.1",
+    "factory-boy>=3.3.3",
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "pytest-django>=4.14.0",
+    "ruff>=0.16.10",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "DJ", "SIM", "C4", "T20"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["config", "common", "users", "audit"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+exclude = ["/migrations/"]
+
+[[tool.mypy.overrides]]
+module = ["environ.*", "factory.*", "channels.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["*.tests.*"]
+disallow_untyped_defs = false
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
+disallow_any_generics = false
+check_untyped_defs = false
+
+[tool.django-stubs]
+django_settings_module = "config.settings.test"
+
+[tool.pytest.ini_options]
+python_files = ["test_*.py"]
+# --ds rather than the ini option: it must win over DJANGO_SETTINGS_MODULE in the environment.
+addopts = "-ra --strict-markers --ds=config.settings.test"
