@@ -8,7 +8,12 @@ A multi-tenant platform where people, organizations, and communities publish, di
 
 ## Status
 
-Phase 0 skeleton: the stack runs end to end, with a custom user model, audit log, error envelope, request IDs, health checks, and tooling. No product features yet; authentication is next (Phase 1).
+Phases 0 and 1 are done. What works today:
+
+- Accounts: register, confirm email, sign in, stay signed in across reloads, sign out, reset and change password.
+- Profiles: details, photo, skills and interests, experience, education, privacy settings, blocking.
+
+Organizations and communities are next (Phase 2).
 
 ## Stack
 
@@ -60,7 +65,7 @@ docker compose exec backend python manage.py createsuperuser
 | `postgres`, `redis` | Datastores (Redis: db 0 cache, db 1 Celery broker, db 2 channel layer) |
 | `mailpit` | Captures outgoing email |
 
-Object storage is not part of the stack yet; it is added with the first file upload (Phase 1).
+Uploaded files go through Django's storage API. Locally they are written to `backend/media/` (git-ignored) and served at `/media/`; production points the same setting at S3-compatible storage.
 
 ## Checks
 
@@ -72,6 +77,7 @@ docker compose exec backend ruff format --check .
 docker compose exec backend mypy .
 docker compose exec backend pytest
 docker compose exec backend python manage.py makemigrations --check --dry-run
+docker compose exec backend python manage.py spectacular --validate --fail-on-warn --file /tmp/schema.yml
 ```
 
 Frontend (Node 24 on the host, or prefix with `docker compose exec frontend`):
@@ -90,7 +96,8 @@ npm run build
 backend/
 ├── config/   settings (base/dev/test/prod), URLs, ASGI, Celery, logging
 ├── common/   base models, error envelope, pagination, request context, state machine, health
-├── users/    custom User model (email login, UUIDv7 primary key)
+├── users/    accounts, sessions, profiles, experience/education, blocks
+├── taxonomy/ shared skill list
 └── audit/    append-only AuditLog and record()
 ```
 
@@ -100,4 +107,6 @@ Each domain app follows the same layering: `models.py` (schema and constraints),
 
 - Every API error uses one envelope: `{type, title, status, code, detail, errors, request_id}`.
 - Every response carries `X-Request-ID`; the same ID appears in backend logs, Celery task logs, and audit records.
+- Sessions: a 10-minute access token kept in memory by the web app, plus a rotating refresh token in an `HttpOnly` cookie sent only to `/api/v1/auth/`. Reusing a rotated refresh token ends that session.
+- Emails are sent by the Celery worker. Locally, read them in Mailpit (http://localhost:8025) to follow confirmation and reset links.
 - Configuration comes from environment variables only. `.env` is git-ignored; never commit real secrets.
