@@ -34,15 +34,27 @@ export class ApiError extends Error {
 }
 
 let getAccessToken: () => string | null = () => null;
+let refreshAccessToken: (() => Promise<string | null>) | null = null;
 
 export function setAccessTokenProvider(provider: () => string | null): void {
   getAccessToken = provider;
+}
+
+/**
+ * Registers how to obtain a new access token when the current one is rejected.
+ * The refresher resolves to the new token, or null if the session is over.
+ */
+export function setAccessTokenRefresher(refresher: (() => Promise<string | null>) | null): void {
+  refreshAccessToken = refresher;
 }
 
 export interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   signal?: AbortSignal;
+  headers?: Record<string, string>;
+  /** Send without a token and never attempt a refresh (the auth endpoints themselves). */
+  anonymous?: boolean;
 }
 
 function isEnvelope(value: unknown): value is ErrorEnvelope {
@@ -75,11 +87,9 @@ async function toApiError(response: Response): Promise<ApiError> {
   });
 }
 
-/** Calls the API. `path` is relative to the versioned base, e.g. `/opportunities/`. */
-export async function http<T>(path: string, options: RequestOptions = {}): Promise<T> {
+async function send(path: string, options: RequestOptions, token: string | null) {
   const { method = "GET", body, signal } = options;
-  const headers: Record<string, string> = { Accept: "application/json" };
-  const token = getAccessToken();
+  const headers: Record<string, string> = { Accept: "application/json", ...options.headers };
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
@@ -88,9 +98,8 @@ export async function http<T>(path: string, options: RequestOptions = {}): Promi
     headers["Content-Type"] = "application/json";
   }
 
-  let response: Response;
   try {
-    response = await fetch(`${API_BASE}${path}`, {
+    return await fetch(`${API_BASE}${path}`, {
       method,
       headers,
       signal,
@@ -105,6 +114,20 @@ export async function http<T>(path: string, options: RequestOptions = {}): Promi
       code: "network_error",
       detail: "Could not reach the server. Check your connection and try again.",
     });
+  }
+}
+
+/** Calls the API. `path` is relative to the versioned base, e.g. `/opportunities/`. */
+export async function http<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const token = options.anonymous ? null : getAccessToken();
+  let response = await send(path, options, token);
+
+  // An expired access token is replaced once, transparently, and the request repeated.
+  if (response.status === 401 && token && refreshAccessToken) {
+    const renewed = await refreshAccessToken();
+    if (renewed) {
+      response = await send(path, options, renewed);
+    }
   }
 
   if (!response.ok) {

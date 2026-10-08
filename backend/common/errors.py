@@ -13,6 +13,7 @@ import structlog
 from django.conf import settings
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
 from django.http import Http404
+from drf_spectacular.utils import extend_schema
 from rest_framework import exceptions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -38,6 +39,12 @@ class DomainError(exceptions.APIException):
     ) -> None:
         super().__init__(detail=detail, code=code)
         self.errors = errors or {}
+
+
+class BadRequest(DomainError):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "The request could not be processed."
+    default_code = "bad_request"
 
 
 class Conflict(DomainError):
@@ -124,6 +131,7 @@ def exception_handler(exc: Exception, context: dict[str, Any]) -> Response | Non
     )
 
 
+@extend_schema(exclude=True)
 @api_view(["GET", "POST", "PUT", "PATCH", "DELETE"])
 @permission_classes([AllowAny])
 def api_not_found(request: Request) -> Response:

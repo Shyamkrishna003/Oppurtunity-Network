@@ -16,7 +16,7 @@ def client():
     [
         ("/http404/", 404, "not_found"),
         ("/django-denied/", 403, "permission_denied"),
-        ("/protected/", 403, "permission_denied"),
+        ("/protected/", 401, "not_authenticated"),
         ("/throttled/", 429, "throttled"),
         ("/transition/", 409, "invalid_transition"),
         ("/rule/", 422, "deadline_passed"),

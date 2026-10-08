@@ -1,0 +1,7 @@
+Welcome to Opportunity Network.
+
+Confirm your email address by opening this link:
+
+{{ frontend_url }}{{ path|safe }}
+
+The link is valid for 3 days. If you did not create an account, you can ignore this email.

@@ -1,0 +1,11 @@
+Someone tried to create an Opportunity Network account with this email address, but you already have one.
+
+Sign in here:
+
+{{ frontend_url }}/login
+
+If you have forgotten your password, you can reset it here:
+
+{{ frontend_url }}/forgot-password
+
+If this was not you, no action is needed.

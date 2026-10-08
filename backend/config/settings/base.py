@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -29,6 +30,7 @@ INSTALLED_APPS = [
     "channels",
     "common",
     "users",
+    "taxonomy",
     "audit",
 ]
 
@@ -87,6 +89,31 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# Uploaded files go through Django's storage API; swap STORAGES["default"] for an
+# S3-compatible backend in production without touching application code.
+MEDIA_URL = "/media/"
+MEDIA_ROOT = env.path("MEDIA_ROOT", default=str(BASE_DIR / "media"))
+AVATAR_MAX_BYTES = 5 * 1024 * 1024
+DATA_UPLOAD_MAX_MEMORY_SIZE = 6 * 1024 * 1024
+
+# Origin of the web app, used to build links in emails.
+FRONTEND_URL = env("FRONTEND_URL").rstrip("/")
+
+# Sessions: a short-lived access token held in memory by the SPA, and a rotating refresh
+# token in an HttpOnly cookie that is only ever sent to the auth endpoints.
+ACCESS_TOKEN_LIFETIME = timedelta(minutes=10)
+REFRESH_TOKEN_LIFETIME = timedelta(days=14)
+# Two tabs can refresh at once; the just-rotated token stays usable this long before its
+# reuse is treated as theft.
+REFRESH_TOKEN_REUSE_GRACE = timedelta(seconds=10)
+REFRESH_COOKIE_NAME = "on_refresh"
+REFRESH_COOKIE_PATH = "/api/v1/auth/"
+REFRESH_COOKIE_SECURE = env.bool("AUTH_COOKIE_SECURE", default=True)
+EMAIL_VERIFICATION_MAX_AGE = timedelta(days=3)
+PASSWORD_RESET_TIMEOUT = 60 * 60
+LOGIN_FAILURE_LIMIT = 10
+LOGIN_FAILURE_WINDOW = timedelta(minutes=15)
+
 # Redis: separate logical databases for cache, Celery broker, and the channel layer.
 CACHES = {
     "default": {
@@ -114,6 +141,13 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+CELERY_BEAT_SCHEDULE = {
+    "purge-expired-refresh-tokens": {
+        "task": "users.purge_expired_refresh_tokens",
+        "schedule": timedelta(hours=24),
+        "options": {"queue": "scheduled"},
+    },
+}
 
 EMAIL_HOST = env("EMAIL_HOST", default="localhost")
 EMAIL_PORT = env.int("EMAIL_PORT", default=25)
@@ -122,7 +156,17 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@opportunity-net
 REST_FRAMEWORK = {
     # Deny by default: every endpoint must opt in to weaker permissions explicitly.
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
-    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_AUTHENTICATION_CLASSES": ["users.authentication.AccessTokenAuthentication"],
+    "DEFAULT_THROTTLE_RATES": {
+        "auth_login": "20/min",
+        "auth_register": "10/hour",
+        "auth_email": "10/hour",
+        "auth_refresh": "60/min",
+        "auth_password": "10/hour",
+        "upload": "30/hour",
+        "skill_create": "30/day",
+        "user_block": "60/hour",
+    },
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "DEFAULT_PAGINATION_CLASS": "common.pagination.CursorPagination",
