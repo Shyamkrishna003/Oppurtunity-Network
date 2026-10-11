@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "communities",
     "opportunities",
     "jobs",
+    "applications",
     "notifications",
     "realtime",
     "audit",
@@ -101,6 +102,11 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = env.path("MEDIA_ROOT", default=str(BASE_DIR / "media"))
 AVATAR_MAX_BYTES = 5 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 6 * 1024 * 1024
+# Files that need a permission check (resumes) are kept outside MEDIA_ROOT and are only
+# served through signed links that expire quickly. See common.storage.
+PRIVATE_MEDIA_ROOT = env.path("PRIVATE_MEDIA_ROOT", default=str(BASE_DIR / "private_media"))
+PRIVATE_DOWNLOAD_TTL = timedelta(seconds=60)
+RESUME_MAX_BYTES = 5 * 1024 * 1024
 
 # Origin of the web app, used to build links in emails.
 FRONTEND_URL = env("FRONTEND_URL").rstrip("/")
@@ -206,6 +212,7 @@ REST_FRAMEWORK = {
         "opportunity_create": "30/day",
         "opportunity_share": "60/hour",
         "opportunity_search": "120/min",
+        "application_create": "30/day",
         "ws_ticket": "30/min",
     },
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
@@ -230,6 +237,7 @@ SPECTACULAR_SETTINGS = {
         "NotificationTypeEnum": "notifications.models.NotificationType",
         "NotificationCategoryEnum": "notifications.models.Category",
         "OpportunityStatusEnum": "opportunities.models.OpportunityStatus",
+        "ApplicationStatusEnum": "applications.models.ApplicationStatus",
         "OpportunityVisibilityEnum": "opportunities.models.OpportunityVisibility",
         "CloseReasonEnum": "opportunities.models.CloseReason",
         "ShareStatusEnum": "opportunities.models.DistributionStatus",

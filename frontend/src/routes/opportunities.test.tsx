@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { formatSalary } from "../features/opportunities/format";
 import type { JobDetail, OpportunityDetail } from "../features/opportunities/types";
-import { makeMe, makeSession } from "../test/fixtures";
+import { makeMe, makeSession, makeViewer } from "../test/fixtures";
 import { apiError, json, mockApi, noContent } from "../test/mockApi";
 import { renderApp } from "../test/renderApp";
 
@@ -53,21 +53,20 @@ function opportunity(overrides: Partial<OpportunityDetail> = {}): OpportunityDet
     posted_by: null,
     skills: [python],
     job,
-    viewer: { can_manage: false, editable_fields: [], is_saved: false },
+    viewer: makeViewer(),
     ...overrides,
   };
 }
 
 const asManager = (overrides: Partial<OpportunityDetail> = {}) =>
   opportunity({
-    viewer: { can_manage: true, editable_fields: null, is_saved: false },
+    viewer: makeViewer({ can_manage: true, editable_fields: null }),
     ...overrides,
   });
-const PUBLISHED_EDITABLE = {
+const PUBLISHED_EDITABLE = makeViewer({
   can_manage: true,
   editable_fields: ["deadline", "description"],
-  is_saved: false,
-};
+});
 
 beforeEach(() => vi.spyOn(window, "confirm").mockReturnValue(true));
 afterEach(() => vi.unstubAllGlobals());
@@ -184,7 +183,7 @@ describe("managing a job", () => {
         json(
           opportunity({
             status: "CLOSED",
-            viewer: { can_manage: true, editable_fields: [], is_saved: false },
+            viewer: makeViewer({ can_manage: true }),
           }),
         ),
       [`POST ${JOB}archive/`]: () => json(opportunity({ status: "ARCHIVED" })),
@@ -397,7 +396,7 @@ describe("editing a job", () => {
         json(
           opportunity({
             status: "CLOSED",
-            viewer: { can_manage: true, editable_fields: [], is_saved: false },
+            viewer: makeViewer({ can_manage: true }),
           }),
         ),
     });

@@ -6,3 +6,4 @@ __pycache__
 .ruff_cache
 staticfiles
 media
+private_media

@@ -3,6 +3,7 @@ from typing import Any
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from applications.models import ApplicationStatus
 from common.choices import ExperienceLevel, WorkMode
 from communities.api.serializers import CommunityRefSerializer
 from jobs.models import EmploymentType
@@ -78,6 +79,11 @@ class OpportunityOrganizationSerializer(serializers.ModelSerializer[Organization
         fields = ("id", "name", "slug", "verification_status")
 
 
+class ViewerApplicationSerializer(serializers.Serializer[Any]):
+    id = serializers.UUIDField()
+    status = serializers.ChoiceField(choices=ApplicationStatus.choices)
+
+
 class OpportunityViewerSerializer(serializers.Serializer[Any]):
     """What the caller may do with this opportunity. The server still enforces all of it."""
 
@@ -85,6 +91,9 @@ class OpportunityViewerSerializer(serializers.Serializer[Any]):
     # Fields the caller may still edit: null means all of them, an empty list means none.
     editable_fields = serializers.ListField(child=serializers.CharField(), allow_null=True)
     is_saved = serializers.BooleanField()
+    # Jobs only. ``application`` is the caller's own, if they ever applied to this job.
+    can_apply = serializers.BooleanField()
+    application = ViewerApplicationSerializer(allow_null=True)
 
 
 class OpportunitySerializer(serializers.ModelSerializer[Opportunity]):
@@ -153,6 +162,10 @@ class OpportunityDetailSerializer(OpportunitySerializer):
             if can_manage
             else [],
             "is_saved": self.context.get("is_saved", False),
+            "can_apply": self.context.get("can_apply", False),
+            "application": ViewerApplicationSerializer(self.context.get("application")).data
+            if self.context.get("application")
+            else None,
         }
 
 

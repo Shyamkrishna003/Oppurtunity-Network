@@ -1,6 +1,7 @@
 from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView
 
+from common import storage
 from common.errors import api_not_found
 
 urlpatterns = [
@@ -10,8 +11,10 @@ urlpatterns = [
     path("", include("organizations.api.urls")),
     path("", include("communities.api.urls")),
     path("", include("opportunities.api.urls")),
+    path("", include("applications.api.urls")),
     path("", include("notifications.api.urls")),
     path("", include("realtime.api")),
+    path("files/<str:token>/", storage.download, name="private-download"),
     # Keep last: unknown API paths get the standard error envelope, in DEBUG too.
     re_path(r"^.*$", api_not_found),
 ]

@@ -4,6 +4,8 @@ import { AnonymousOnly, RequireAuth } from "../features/auth/guards";
 import { Realtime } from "../features/realtime/Realtime";
 import { AppLayout } from "../layouts/AppLayout";
 import { PublicLayout } from "../layouts/PublicLayout";
+import { ApplicationPage } from "../routes/ApplicationPage";
+import { ApplicationsPage } from "../routes/ApplicationsPage";
 import { CommunitiesPage } from "../routes/CommunitiesPage";
 import { CommunityCreatePage } from "../routes/CommunityCreatePage";
 import { CommunityPage } from "../routes/CommunityPage";
@@ -60,6 +62,8 @@ export const routes: RouteObject[] = [
               { path: "opportunities/:opportunityId/edit", element: <OpportunityEditPage /> },
               { path: "my/opportunities", element: <MyOpportunitiesPage /> },
               { path: "saved", element: <SavedOpportunitiesPage /> },
+              { path: "applications", element: <ApplicationsPage /> },
+              { path: "applications/:applicationId", element: <ApplicationPage /> },
               { path: "notifications", element: <NotificationsPage /> },
               { path: "settings/notifications", element: <SettingsNotificationsPage /> },
               {

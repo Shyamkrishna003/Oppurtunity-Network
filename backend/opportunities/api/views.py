@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import BaseThrottle
 from rest_framework.views import APIView
 
+from applications import selectors as applications
 from common.throttles import ScopedThrottle
 from opportunities import policies, selectors, services
 from opportunities.api import serializers
@@ -28,10 +29,13 @@ def _detail(request: Request, opportunity_id: UUID, status_code: int = 200) -> R
         opportunity,
         selectors.get_membership(request.user, opportunity.organization_id),
     )
+    applying = applications.applying_state(request.user, opportunity)
     context = {
         "can_manage": can_manage,
         "communities": selectors.communities_showing(request.user, opportunity),
         "is_saved": selectors.is_saved(request.user, opportunity),
+        "can_apply": applying.can_apply,
+        "application": applying.application,
     }
     data = serializers.OpportunityDetailSerializer(opportunity, context=context).data
     return Response(data, status=status_code)

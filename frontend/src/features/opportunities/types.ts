@@ -1,3 +1,4 @@
+import type { ApplicationStatus } from "../applications/types";
 import type { ExperienceLevel, Skill, WorkMode } from "../auth/types";
 import type { Person } from "../organizations/types";
 
@@ -185,5 +186,9 @@ export interface OpportunityDetail extends Opportunity {
     /** Fields that may still be edited: null means all of them, an empty list none. */
     editable_fields: string[] | null;
     is_saved: boolean;
+    /** Whether the viewer may apply now. False once they have, and for anyone signed out. */
+    can_apply: boolean;
+    /** The viewer's own application to this job, if they ever made one. */
+    application: { id: string; status: ApplicationStatus } | null;
   };
 }

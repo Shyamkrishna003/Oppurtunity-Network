@@ -1,4 +1,5 @@
 import type { Me, Session } from "../features/auth/types";
+import type { OpportunityDetail } from "../features/opportunities/types";
 
 export function makeMe(overrides: Partial<Me> = {}): Me {
   return {
@@ -23,6 +24,20 @@ export function makeMe(overrides: Partial<Me> = {}): Me {
       accepts_referral_requests: true,
     },
     skills: { has: [], interested: [] },
+    ...overrides,
+  };
+}
+
+type OpportunityViewer = OpportunityDetail["viewer"];
+
+/** What the viewer may do with an opportunity: by default, nothing but look. */
+export function makeViewer(overrides: Partial<OpportunityViewer> = {}): OpportunityViewer {
+  return {
+    can_manage: false,
+    editable_fields: [],
+    is_saved: false,
+    can_apply: false,
+    application: null,
     ...overrides,
   };
 }

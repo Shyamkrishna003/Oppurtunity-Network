@@ -221,6 +221,7 @@ SAMPLE = {
     "community_name": "Kochi Developers",
     "opportunity_id": "p-1",
     "opportunity_title": "Backend Engineer",
+    "application_id": "a-1",
     "person_name": "Ada Lovelace",
     "inviter_name": "Grace Hopper",
     "role_label": "recruiter",

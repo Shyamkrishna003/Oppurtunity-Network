@@ -18,6 +18,8 @@ class NotificationType(models.TextChoices):
     SHARE_REJECTED = "SHARE_REJECTED", "Opportunity declined by a community"
     SHARE_REMOVED = "SHARE_REMOVED", "Opportunity removed by a community"
     OPPORTUNITY_EXPIRED = "OPPORTUNITY_EXPIRED", "Opportunity expired"
+    APPLICATION_RECEIVED = "APPLICATION_RECEIVED", "Someone applied to a job"
+    APPLICATION_WITHDRAWN = "APPLICATION_WITHDRAWN", "An application was withdrawn"
 
 
 class Category(models.TextChoices):
