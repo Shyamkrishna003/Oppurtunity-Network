@@ -8,7 +8,7 @@ A multi-tenant platform where people, organizations, and communities publish, di
 
 ## Status
 
-Phases 0 to 4 are done. What works today:
+Phases 0 to 5 are done. What works today:
 
 - Accounts: register, confirm email, sign in, stay signed in across reloads, sign out, reset and change password.
 - Profiles: details, photo, skills and interests, experience, education, privacy settings, blocking.
@@ -20,9 +20,10 @@ Phases 0 to 4 are done. What works today:
 - Discovery: a feed with full-text search (typo-tolerant), filters kept in the address so searches can be shared, and "best match" ranking from your skills, interests, communities, location and work mode, with the reasons shown. Saved opportunities.
 - Notifications: in the app and by email for invitations, membership decisions, review requests and decisions about your opportunities, with per-category preferences. They appear live over a WebSocket (`/ws/stream/`), which is only ever a hint: every notification is stored first, so nothing is lost if the connection, the worker or the browser is away.
 
-- Applying (Phase 5, in progress): apply to a job with a PDF resume and a note, follow each application under "My applications", and withdraw. Resumes are stored privately and downloaded only through links that expire after a minute; the people who manage the job are notified. The recruiter's pipeline (moving candidates through stages) is next.
+- Applications: apply to a job with a PDF resume and a note, follow each application under "My applications", and withdraw. Resumes are stored privately and downloaded only through links that expire after a minute.
+- Hiring pipeline: whoever manages a job sees its applications by stage (applied, screening, shortlisted, interview, offer, hired, not selected), moves them forward or rejects them, and can leave notes that only the hiring team reads. Applicants are told of each move in the app, by email and live. A move made on an out-of-date page is refused rather than overwriting a colleague's decision.
 
-A user can belong to any number of organizations and communities, with a different role in each.
+A user can belong to any number of organizations and communities, with a different role in each. Connections and referrals are next (Phase 6).
 
 ## Stack
 

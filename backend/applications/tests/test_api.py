@@ -65,13 +65,20 @@ def test_applying_creates_the_application_and_tells_the_people_who_manage_the_jo
     assert body["applicant"]["id"] == str(applicant.pk)
     assert body["headline"] == "Python developer"
     assert body["history"] == [
-        {"from_status": "", "to_status": "APPLIED", "created_at": body["history"][0]["created_at"]}
+        {
+            "from_status": "",
+            "to_status": "APPLIED",
+            "created_at": body["history"][0]["created_at"],
+            "note": "",
+            "actor": None,
+        }
     ]
     assert body["viewer"] == {
         "is_applicant": True,
         "can_manage": False,
         "can_withdraw": True,
         "can_download_resume": True,
+        "next_statuses": [],
     }
     # The storage key is not part of any response.
     assert "resume" not in body and application.resume not in response.content.decode()
@@ -356,6 +363,14 @@ def test_who_can_open_an_application(api, api_as):
             "can_manage": True,
             "can_withdraw": False,
             "can_download_resume": True,
+            "next_statuses": [
+                "SCREENING",
+                "SHORTLISTED",
+                "INTERVIEW",
+                "OFFER",
+                "HIRED",
+                "REJECTED",
+            ],
         }
 
     # Not the organization's ordinary members, not other applicants, not even platform staff.
@@ -409,7 +424,10 @@ def test_the_applicant_can_withdraw_and_the_managers_are_told(api_as):
         "WITHDRAWN",
     )
     log = AuditLog.objects.get(action="application.withdrawn")
-    assert (log.actor, log.metadata) == (application.applicant, {"from": "INTERVIEW"})
+    assert (log.actor, log.metadata) == (
+        application.applicant,
+        {"from": "INTERVIEW", "to": "WITHDRAWN"},
+    )
     told = Notification.objects.filter(type="APPLICATION_WITHDRAWN")
     assert {n.recipient for n in told} == {people["OWNER"], people["ADMIN"], people["RECRUITER"]}
 

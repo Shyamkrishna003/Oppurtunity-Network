@@ -3,12 +3,13 @@
 from dataclasses import dataclass
 from uuid import UUID
 
-from django.db.models import Q, QuerySet
+from django.db.models import Count, Q, QuerySet
 from django.http import Http404
 from django.utils import timezone
+from rest_framework.exceptions import PermissionDenied
 
 from applications import policies
-from applications.models import Application, ApplicationStatusHistory
+from applications.models import Application, ApplicationStatus, ApplicationStatusHistory
 from applications.policies import Actor, Barrier
 from opportunities import policies as opportunity_policies
 from opportunities import selectors as opportunities
@@ -64,7 +65,39 @@ def list_mine(user: User, status: str = "") -> QuerySet[Application]:
 
 
 def history_of(application: Application) -> QuerySet[ApplicationStatusHistory]:
-    return application.history.order_by("created_at", "id")
+    return application.history.select_related("actor__profile").order_by("created_at", "id")
+
+
+def get_managed_job(user: User, opportunity_id: UUID) -> Opportunity:
+    """The job, for someone about to look at its applications.
+
+    404 if they cannot see it at all or it is not a job; 403 if they can see it but do not
+    manage it, which reveals nothing they could not already see.
+    """
+    opportunity = opportunities.get_opportunity(user, opportunity_id)
+    if opportunity.type != OpportunityType.JOB:
+        raise Http404
+    if not is_manager(user, opportunity):
+        raise PermissionDenied()
+    return opportunity
+
+
+def list_for_job(opportunity: Opportunity, status: str = "") -> QuerySet[Application]:
+    """A job's applications, for its managers. The caller has established that they are one."""
+    applications = Application.objects.filter(opportunity=opportunity)
+    if status:
+        applications = applications.filter(status=status)
+    return applications.select_related("applicant__profile")
+
+
+def stage_counts(opportunity: Opportunity) -> dict[str, int]:
+    """How many applications the job has in each status, zeros included."""
+    counted = dict(
+        Application.objects.filter(opportunity=opportunity)
+        .values_list("status")
+        .annotate(total=Count("id"))
+    )
+    return {status: counted.get(status, 0) for status in ApplicationStatus.values}
 
 
 def managers_of(opportunity: Opportunity) -> list[User]:

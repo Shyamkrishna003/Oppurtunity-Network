@@ -92,6 +92,11 @@ function ManagerPanel({ opportunity }: { opportunity: OpportunityDetail }) {
       )}
 
       <div className="button-row">
+        {status !== "DRAFT" && opportunity.job.application_method === "INTERNAL" && (
+          <Link to={`/opportunities/${opportunity.id}/applications`} className="button">
+            View applications
+          </Link>
+        )}
         {canEdit && (
           <Link to={`/opportunities/${opportunity.id}/edit`} className="button">
             Edit

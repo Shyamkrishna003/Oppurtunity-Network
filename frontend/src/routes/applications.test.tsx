@@ -2,7 +2,12 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Application, ApplicationDetail } from "../features/applications/types";
+import type {
+  Application,
+  ApplicationDetail,
+  ApplicationStatus,
+  ApplicationStep,
+} from "../features/applications/types";
 import type { OpportunityDetail } from "../features/opportunities/types";
 import { makeMe, makeSession, makeViewer } from "../test/fixtures";
 import { apiError, json, mockApi } from "../test/mockApi";
@@ -58,6 +63,26 @@ function job(overrides: Partial<OpportunityDetail> = {}): OpportunityDetail {
   };
 }
 
+type Viewer = ApplicationDetail["viewer"];
+
+/** As the applicant sees their own open application, unless told otherwise. */
+const viewer = (overrides: Partial<Viewer> = {}): Viewer => ({
+  is_applicant: true,
+  can_manage: false,
+  can_withdraw: true,
+  can_download_resume: true,
+  next_statuses: [],
+  ...overrides,
+});
+const MANAGER = viewer({ is_applicant: false, can_manage: true, can_withdraw: false });
+
+const step = (
+  from_status: ApplicationStep["from_status"],
+  to_status: ApplicationStatus,
+  created_at: string,
+  extra: Partial<ApplicationStep> = {},
+): ApplicationStep => ({ from_status, to_status, created_at, note: "", actor: null, ...extra });
+
 function application(overrides: Partial<ApplicationDetail> = {}): ApplicationDetail {
   return {
     id: "app-1",
@@ -73,13 +98,8 @@ function application(overrides: Partial<ApplicationDetail> = {}): ApplicationDet
     cover_note: "I have run Django in production.",
     headline: "Python developer",
     applicant: { id: "u-1", display_name: "Ada Lovelace", headline: "", avatar_url: null },
-    history: [{ from_status: "", to_status: "APPLIED", created_at: "2026-10-10T09:00:00Z" }],
-    viewer: {
-      is_applicant: true,
-      can_manage: false,
-      can_withdraw: true,
-      can_download_resume: true,
-    },
+    history: [step("", "APPLIED", "2026-10-10T09:00:00Z")],
+    viewer: viewer(),
     ...overrides,
   };
 }
@@ -349,12 +369,8 @@ describe("one application", () => {
           application({
             status: "INTERVIEW",
             history: [
-              { from_status: "", to_status: "APPLIED", created_at: "2026-10-10T09:00:00Z" },
-              {
-                from_status: "APPLIED",
-                to_status: "INTERVIEW",
-                created_at: "2026-10-12T09:00:00Z",
-              },
+              step("", "APPLIED", "2026-10-10T09:00:00Z"),
+              step("APPLIED", "INTERVIEW", "2026-10-12T09:00:00Z"),
             ],
           }),
         ),
@@ -387,19 +403,10 @@ describe("one application", () => {
           application({
             status: "WITHDRAWN",
             history: [
-              { from_status: "", to_status: "APPLIED", created_at: "2026-10-10T09:00:00Z" },
-              {
-                from_status: "APPLIED",
-                to_status: "WITHDRAWN",
-                created_at: "2026-10-11T09:00:00Z",
-              },
+              step("", "APPLIED", "2026-10-10T09:00:00Z"),
+              step("APPLIED", "WITHDRAWN", "2026-10-11T09:00:00Z"),
             ],
-            viewer: {
-              is_applicant: true,
-              can_manage: false,
-              can_withdraw: false,
-              can_download_resume: true,
-            },
+            viewer: viewer({ can_withdraw: false }),
           }),
         ),
     });
@@ -443,17 +450,7 @@ describe("one application", () => {
 
   it("shows someone who manages the job who applied, without the applicant's controls", async () => {
     mockApi({
-      [`GET ${ONE}`]: () =>
-        json(
-          application({
-            viewer: {
-              is_applicant: false,
-              can_manage: true,
-              can_withdraw: false,
-              can_download_resume: true,
-            },
-          }),
-        ),
+      [`GET ${ONE}`]: () => json(application({ viewer: MANAGER })),
     });
     renderApp("/applications/app-1", makeSession(makeMe({ id: "u-9" })));
 
@@ -477,12 +474,7 @@ describe("one application", () => {
           application({
             status: "WITHDRAWN",
             cover_note: "",
-            viewer: {
-              is_applicant: false,
-              can_manage: true,
-              can_withdraw: false,
-              can_download_resume: false,
-            },
+            viewer: { ...MANAGER, can_download_resume: false },
           }),
         ),
     });

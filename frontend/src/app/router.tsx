@@ -23,6 +23,7 @@ import { OrganizationCreatePage } from "../routes/OrganizationCreatePage";
 import { OrganizationInvitationPage } from "../routes/OrganizationInvitationPage";
 import { OrganizationPage } from "../routes/OrganizationPage";
 import { OrganizationsPage } from "../routes/OrganizationsPage";
+import { PipelinePage } from "../routes/PipelinePage";
 import { ProfilePage } from "../routes/ProfilePage";
 import { RegisterPage } from "../routes/RegisterPage";
 import { ResetPasswordPage } from "../routes/ResetPasswordPage";
@@ -60,6 +61,7 @@ export const routes: RouteObject[] = [
               { path: "communities/new", element: <CommunityCreatePage /> },
               { path: "opportunities/new", element: <OpportunityCreatePage /> },
               { path: "opportunities/:opportunityId/edit", element: <OpportunityEditPage /> },
+              { path: "opportunities/:opportunityId/applications", element: <PipelinePage /> },
               { path: "my/opportunities", element: <MyOpportunitiesPage /> },
               { path: "saved", element: <SavedOpportunitiesPage /> },
               { path: "applications", element: <ApplicationsPage /> },

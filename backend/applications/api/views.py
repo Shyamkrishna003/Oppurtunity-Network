@@ -28,6 +28,16 @@ def _detail(request: Request, application_id: UUID, status_code: int = 200) -> R
     return Response(data, status=status_code)
 
 
+def _requested_status(request: Request) -> str:
+    """The ``status`` filter from the query string: one status, or "" for all."""
+    requested = request.query_params.get("status", "")
+    if requested and requested not in ApplicationStatus.values:
+        raise ValidationError(
+            {"status": [f"Choose one of: {', '.join(ApplicationStatus.values)}."]}
+        )
+    return str(requested)
+
+
 class ApplyView(APIView):
     permission_classes = [IsVerified]
     parser_classes = [MultiPartParser]
@@ -77,12 +87,7 @@ class MyApplicationsView(generics.ListAPIView[Application]):
     def get_queryset(self) -> QuerySet[Application]:
         if getattr(self, "swagger_fake_view", False):
             return Application.objects.none()
-        requested = self.request.query_params.get("status", "")
-        if requested and requested not in ApplicationStatus.values:
-            raise ValidationError(
-                {"status": [f"Choose one of: {', '.join(ApplicationStatus.values)}."]}
-            )
-        return selectors.list_mine(current_user(self.request), requested)
+        return selectors.list_mine(current_user(self.request), _requested_status(self.request))
 
     @extend_schema(parameters=[OpenApiParameter("status", str, enum=ApplicationStatus.values)])
     def get(self, request: Request, *args: Any, **kwargs: Any) -> Response:
@@ -102,6 +107,62 @@ class WithdrawView(APIView):
         """Take your application back. It cannot be reinstated or replaced afterwards."""
         services.withdraw(user=current_user(request), application_id=application_id)
         return _detail(request, application_id)
+
+
+class TransitionView(APIView):
+    @extend_schema(
+        request=serializers.TransitionSerializer,
+        responses=serializers.ApplicationDetailSerializer,
+    )
+    def post(self, request: Request, application_id: UUID) -> Response:
+        """Move an application to a later stage or reject it, as someone managing the job.
+
+        Stages only go forward and may be skipped. Answers 409 ``stale_state`` if the
+        application is no longer in ``expected_status``, and 409 ``invalid_transition`` for a
+        move that is never allowed. The optional ``note`` is only ever shown to the people
+        managing the job.
+        """
+        serializer = serializers.TransitionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        services.transition(
+            user=current_user(request),
+            application_id=application_id,
+            to=ApplicationStatus(data["to"]),
+            expected=ApplicationStatus(data["expected_status"]),
+            note=data["note"],
+        )
+        return _detail(request, application_id)
+
+
+class JobApplicationsView(generics.ListAPIView[Application]):
+    """A job's applications, newest first, for the people who manage the job."""
+
+    serializer_class = serializers.PipelineApplicationSerializer
+
+    def get_queryset(self) -> QuerySet[Application]:
+        if getattr(self, "swagger_fake_view", False):
+            return Application.objects.none()
+        job = selectors.get_managed_job(current_user(self.request), self.kwargs["opportunity_id"])
+        return selectors.list_for_job(job, _requested_status(self.request))
+
+    def get_serializer_context(self) -> dict[str, Any]:
+        return {**super().get_serializer_context(), "viewer_id": self.request.user.pk}
+
+    @extend_schema(parameters=[OpenApiParameter("status", str, enum=ApplicationStatus.values)])
+    def get(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        return super().get(request, *args, **kwargs)
+
+
+class JobApplicationsSummaryView(APIView):
+    @extend_schema(responses=serializers.PipelineSummarySerializer)
+    def get(self, request: Request, opportunity_id: UUID) -> Response:
+        """How many applications the job has in each status, and how many openings."""
+        job = selectors.get_managed_job(current_user(request), opportunity_id)
+        counts = selectors.stage_counts(job)
+        return Response(
+            {"counts": counts, "total": sum(counts.values()), "openings": job.job.openings}
+        )
 
 
 class ResumeView(APIView):
