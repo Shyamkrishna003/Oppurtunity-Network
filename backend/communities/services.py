@@ -128,6 +128,12 @@ def _move(
         member.role = CommunityRole.MEMBER
     member.save(update_fields=["status", "role", "joined_at", "invited_by", "updated_at"])
     _record_change(member, by=by, previous=previous, community=community)
+    if previous == S.ACTIVE and target in (S.REMOVED, S.BANNED):
+        # Someone expelled no longer has a say in what the community shows. Imported here
+        # because opportunities build on communities, not the other way round.
+        from opportunities.distribution import reject_pending_from
+
+        reject_pending_from(community_id=community.pk, user_id=member.user_id, by=by)
     return True
 
 

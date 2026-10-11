@@ -39,7 +39,7 @@ S = OpportunityStatus
 _LOCKED = "This cannot be changed after publishing."
 
 
-def _lock(opportunity_id: UUID) -> Opportunity:
+def lock_opportunity(opportunity_id: UUID) -> Opportunity:
     opportunity = (
         Opportunity.objects.select_for_update(of=("self",))
         .select_related("organization", "job")
@@ -51,7 +51,7 @@ def _lock(opportunity_id: UUID) -> Opportunity:
     return opportunity
 
 
-def _require_manager(user: User, opportunity: Opportunity) -> Manager:
+def require_manager(user: User, opportunity: Opportunity) -> Manager:
     membership = selectors.get_membership(user, opportunity.organization_id)
     if not policies.can_manage(user, opportunity, membership):
         raise PermissionDenied()
@@ -162,8 +162,8 @@ def update_opportunity(
     """Edit an opportunity. A draft is fully editable; once published, only what cannot
     mislead the people already looking at it."""
     with transaction.atomic():
-        opportunity = _lock(opportunity_id)
-        _require_manager(actor, opportunity)
+        opportunity = lock_opportunity(opportunity_id)
+        require_manager(actor, opportunity)
         allowed = policies.editable_fields(opportunity)
         if allowed is not None and not allowed:
             raise Conflict(
@@ -231,8 +231,8 @@ def update_opportunity(
 def delete_draft(*, actor: User, opportunity_id: UUID) -> None:
     """Drafts can be deleted outright; anything that was ever published is archived instead."""
     with transaction.atomic():
-        opportunity = _lock(opportunity_id)
-        _require_manager(actor, opportunity)
+        opportunity = lock_opportunity(opportunity_id)
+        require_manager(actor, opportunity)
         if opportunity.status != S.DRAFT:
             raise Conflict(
                 "Only a draft can be deleted. Close and archive this opportunity instead.",
@@ -272,8 +272,8 @@ def _publication_errors(opportunity: Opportunity) -> FieldErrors:
 
 def publish(*, actor: User, opportunity_id: UUID) -> Opportunity:
     with transaction.atomic():
-        opportunity = _lock(opportunity_id)
-        manager = _require_manager(actor, opportunity)
+        opportunity = lock_opportunity(opportunity_id)
+        manager = require_manager(actor, opportunity)
         # The state check comes first: a closed opportunity is a conflict, not a list of
         # missing fields; and publishing twice changes nothing the second time.
         if not LIFECYCLE.apply(opportunity, S.PUBLISHED, actor=manager):
@@ -298,8 +298,8 @@ def publish(*, actor: User, opportunity_id: UUID) -> Opportunity:
 
 def close(*, actor: User, opportunity_id: UUID, reason: CloseReason) -> Opportunity:
     with transaction.atomic():
-        opportunity = _lock(opportunity_id)
-        manager = _require_manager(actor, opportunity)
+        opportunity = lock_opportunity(opportunity_id)
+        manager = require_manager(actor, opportunity)
         if LIFECYCLE.apply(opportunity, S.CLOSED, actor=manager):
             opportunity.closed_at = timezone.now()
             opportunity.close_reason = reason
@@ -316,8 +316,8 @@ def close(*, actor: User, opportunity_id: UUID, reason: CloseReason) -> Opportun
 
 def archive(*, actor: User, opportunity_id: UUID) -> Opportunity:
     with transaction.atomic():
-        opportunity = _lock(opportunity_id)
-        manager = _require_manager(actor, opportunity)
+        opportunity = lock_opportunity(opportunity_id)
+        manager = require_manager(actor, opportunity)
         if LIFECYCLE.apply(opportunity, S.ARCHIVED, actor=manager):
             opportunity.save(update_fields=["status", "updated_at"])
             record(

@@ -5,11 +5,16 @@ import { pagedQuery } from "../../services/pagination";
 import { useSessionStatus } from "../auth/api";
 import type {
   CloseReason,
+  CommunityOpportunity,
   NewOpportunityInput,
   Opportunity,
   OpportunityDetail,
   OpportunityInput,
   OpportunityStatus,
+  Share,
+  ShareOption,
+  Submission,
+  SubmissionAction,
 } from "./types";
 
 const keys = {
@@ -77,4 +82,69 @@ export function useArchiveOpportunity(id: string) {
 
 export function useDeleteOpportunity(id: string) {
   return useOpportunityMutation(() => http<void>(`/opportunities/${id}/`, { method: "DELETE" }));
+}
+
+// --- Sharing with communities -----------------------------------------------------------
+
+/** The communities an opportunity was offered to. Managers only. */
+export function useShares(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...keys.detail(id), "shares"],
+    queryFn: ({ signal }) => http<Share[]>(`/opportunities/${id}/communities/`, { signal }),
+    enabled,
+  });
+}
+
+export function useShareOptions(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...keys.detail(id), "share-options"],
+    queryFn: ({ signal }) =>
+      http<ShareOption[]>(`/opportunities/${id}/communities/options/`, { signal }),
+    enabled,
+  });
+}
+
+export function useShareWith(id: string) {
+  return useOpportunityMutation((communityIds: string[]) =>
+    http<Share[]>(`/opportunities/${id}/communities/`, {
+      method: "POST",
+      body: { community_ids: communityIds },
+    }),
+  );
+}
+
+export function useWithdrawShare(id: string) {
+  return useOpportunityMutation((communityId: string) =>
+    http<void>(`/opportunities/${id}/communities/${communityId}/`, { method: "DELETE" }),
+  );
+}
+
+/** Open opportunities a community shows; `featured` limits it to the pinned ones. */
+export function useCommunityOpportunities(communityId: string, featured: boolean) {
+  const status = useSessionStatus();
+  return useInfiniteQuery({
+    queryKey: [...keys.all, "community", communityId, featured ? "featured" : "all", status],
+    ...pagedQuery<CommunityOpportunity>(
+      `/communities/${communityId}/opportunities/${featured ? "?featured=true" : ""}`,
+    ),
+    enabled: status !== "unknown",
+  });
+}
+
+/** Shares waiting for the community's decision. Moderators, admins and owners only. */
+export function useSubmissions(communityId: string) {
+  return useInfiniteQuery({
+    queryKey: [...keys.all, "community", communityId, "submissions"],
+    ...pagedQuery<Submission>(`/communities/${communityId}/submissions/?status=PENDING`),
+  });
+}
+
+export function useSubmissionAction(communityId: string) {
+  return useOpportunityMutation(
+    ({ shareId, action, reason }: { shareId: string; action: SubmissionAction; reason?: string }) =>
+      http<Submission>(`/communities/${communityId}/submissions/${shareId}/${action}/`, {
+        method: "POST",
+        body: reason ? { reason } : undefined,
+      }),
+  );
 }

@@ -94,8 +94,65 @@ export interface Opportunity extends Omit<OpportunityInput, "skill_ids"> {
   skills: Skill[];
 }
 
+export type ShareStatus = "PENDING" | "APPROVED" | "REJECTED" | "REMOVED";
+
+export const SHARE_STATUS_LABELS: Record<ShareStatus, string> = {
+  PENDING: "Waiting for review",
+  APPROVED: "Shown",
+  REJECTED: "Rejected",
+  REMOVED: "Removed by the community",
+};
+
+export interface CommunityRef {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+/** One community an opportunity was offered to, as its managers see it. */
+export interface Share {
+  id: string;
+  community: CommunityRef;
+  status: ShareStatus;
+  rejection_reason: string;
+  is_featured: boolean;
+  created_at: string;
+}
+
+/** One of the manager's communities and what sharing into it would do. */
+export interface ShareOption {
+  community: CommunityRef;
+  /** The existing share's status, if the opportunity is already there. */
+  current: ShareStatus | null;
+  /** APPROVED: shown at once. PENDING: goes to review. null: not allowed. */
+  outcome: ShareStatus | null;
+}
+
+/** An opportunity in a community's list. */
+export interface CommunityOpportunity {
+  share_id: string;
+  is_featured: boolean;
+  opportunity: Opportunity;
+}
+
+/** A share as the community's moderators see it. */
+export interface Submission {
+  id: string;
+  status: ShareStatus;
+  is_featured: boolean;
+  rejection_reason: string;
+  created_at: string;
+  reviewed_at: string | null;
+  submitted_by: Person | null;
+  opportunity: Opportunity;
+}
+
+export type SubmissionAction = "approve" | "reject" | "remove" | "feature" | "unfeature";
+
 export interface OpportunityDetail extends Opportunity {
   moderation_status: "VISIBLE" | "HIDDEN" | "REMOVED";
+  /** Communities showing this opportunity, among those the viewer may see. */
+  communities: CommunityRef[];
   viewer: {
     can_manage: boolean;
     /** Fields that may still be edited: null means all of them, an empty list none. */

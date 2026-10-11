@@ -200,6 +200,10 @@ button:disabled {
   width: auto;
 }
 
+.opportunity-card .chips {
+  margin: 0.5rem 0 0;
+}
+
 .plain-fieldset {
   margin: 0;
   padding: 0;

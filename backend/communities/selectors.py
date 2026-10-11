@@ -37,7 +37,7 @@ def _with_member_count(queryset: QuerySet[Community]) -> QuerySet[Community]:
     )
 
 
-def _visible_to(viewer: Viewer) -> QuerySet[Community]:
+def visible_to(viewer: Viewer) -> QuerySet[Community]:
     """Every community the viewer may know exists. The single definition of that rule."""
     if viewer.is_authenticated and is_platform_staff(viewer):
         return Community.objects.all()
@@ -52,7 +52,7 @@ def _visible_to(viewer: Viewer) -> QuerySet[Community]:
 
 
 def list_communities(viewer: Viewer, query: str = "", category: str = "") -> QuerySet[Community]:
-    communities = _visible_to(viewer).filter(status=CommunityStatus.ACTIVE)
+    communities = visible_to(viewer).filter(status=CommunityStatus.ACTIVE)
     query = query.strip()
     if query:
         communities = communities.filter(Q(name__icontains=query) | Q(name__trigram_similar=query))
@@ -64,7 +64,7 @@ def list_communities(viewer: Viewer, query: str = "", category: str = "") -> Que
 def get_community(viewer: Viewer, community_id: UUID) -> Community:
     """The community if the viewer may see it, else 404: a private community and one that
     does not exist look the same from outside."""
-    community = _with_member_count(_visible_to(viewer).filter(pk=community_id)).first()
+    community = _with_member_count(visible_to(viewer).filter(pk=community_id)).first()
     if community is None:
         raise Http404
     return community

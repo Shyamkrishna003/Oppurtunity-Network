@@ -12,6 +12,10 @@ import {
 } from "../features/communities/api";
 import { CommunityForm } from "../features/communities/CommunityForm";
 import { PeopleList } from "../features/communities/PeopleList";
+import {
+  CommunityOpportunityList,
+  ReviewQueue,
+} from "../features/opportunities/CommunityOpportunities";
 import { RulesEditor } from "../features/communities/RulesEditor";
 import {
   JOIN_POLICY_LABELS,
@@ -236,6 +240,18 @@ export function CommunityPage() {
       </section>
 
       <Rules community={data} />
+
+      {viewer.can_review_requests && (
+        <section className="card" aria-labelledby="review-heading">
+          <h2 id="review-heading">Opportunities waiting for review</h2>
+          <ReviewQueue communityId={data.id} />
+        </section>
+      )}
+
+      <section className="card" aria-labelledby="opportunities-heading">
+        <h2 id="opportunities-heading">Opportunities</h2>
+        <CommunityOpportunityList communityId={data.id} canReview={viewer.can_review_requests} />
+      </section>
 
       {viewer.can_review_requests && (
         <section className="card" aria-labelledby="requests-heading">

@@ -11,6 +11,7 @@ import {
   usePublishOpportunity,
 } from "../features/opportunities/api";
 import { formatDate, formatSalary } from "../features/opportunities/format";
+import { SharePanel } from "../features/opportunities/SharePanel";
 import {
   CLOSE_REASON_LABELS,
   EMPLOYMENT_TYPE_LABELS,
@@ -230,6 +231,18 @@ export function OpportunityPage() {
       )}
 
       {data.viewer.can_manage && <ManagerPanel opportunity={data} />}
+      {data.viewer.can_manage && open && <SharePanel opportunity={data} />}
+      {data.communities.length > 0 && (
+        <p className="muted">
+          Shared in{" "}
+          {data.communities.map((community, index) => (
+            <span key={community.id}>
+              {index > 0 && ", "}
+              <Link to={`/communities/${community.id}`}>{community.name}</Link>
+            </span>
+          ))}
+        </p>
+      )}
 
       <section className="card" aria-labelledby="about-heading">
         <h2 id="about-heading">About the job</h2>

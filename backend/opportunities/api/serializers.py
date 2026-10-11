@@ -3,9 +3,17 @@ from typing import Any
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from communities.api.serializers import CommunityRefSerializer
 from jobs.serializers import JobDetailSerializer
 from opportunities import policies
-from opportunities.models import CloseReason, Opportunity, OpportunityType
+from opportunities.distribution import MAX_COMMUNITIES_PER_SHARE
+from opportunities.models import (
+    CloseReason,
+    DistributionStatus,
+    Opportunity,
+    OpportunityCommunity,
+    OpportunityType,
+)
 from opportunities.services import MAX_SKILLS
 from organizations.api.serializers import PersonSerializer
 from organizations.models import Organization
@@ -115,9 +123,20 @@ class OpportunitySerializer(serializers.ModelSerializer[Opportunity]):
 
 class OpportunityDetailSerializer(OpportunitySerializer):
     viewer = serializers.SerializerMethodField()
+    communities = serializers.SerializerMethodField()
 
     class Meta(OpportunitySerializer.Meta):
-        fields = (*OpportunitySerializer.Meta.fields, "moderation_status", "viewer")
+        fields = (
+            *OpportunitySerializer.Meta.fields,
+            "moderation_status",
+            "communities",
+            "viewer",
+        )
+
+    @extend_schema_field(CommunityRefSerializer(many=True))
+    def get_communities(self, opportunity: Opportunity) -> Any:
+        """Communities showing this opportunity, among those the caller may see."""
+        return CommunityRefSerializer(self.context.get("communities", []), many=True).data
 
     @extend_schema_field(OpportunityViewerSerializer)
     def get_viewer(self, opportunity: Opportunity) -> dict[str, Any]:
@@ -129,3 +148,66 @@ class OpportunityDetailSerializer(OpportunitySerializer):
             if can_manage
             else [],
         }
+
+
+# --- Sharing with communities -----------------------------------------------------------
+
+
+class ShareRequestSerializer(serializers.Serializer[Any]):
+    community_ids = serializers.ListField(
+        child=serializers.UUIDField(), min_length=1, max_length=MAX_COMMUNITIES_PER_SHARE
+    )
+
+
+class ShareSerializer(serializers.ModelSerializer[OpportunityCommunity]):
+    """One community the opportunity was offered to, as its managers see it."""
+
+    community = CommunityRefSerializer()
+
+    class Meta:
+        model = OpportunityCommunity
+        fields = ("id", "community", "status", "rejection_reason", "is_featured", "created_at")
+
+
+class ShareOptionSerializer(serializers.Serializer[Any]):
+    """One of the caller's communities and what sharing into it would do."""
+
+    community = CommunityRefSerializer()
+    current = serializers.ChoiceField(choices=DistributionStatus.choices, allow_null=True)
+    # APPROVED: shown at once. PENDING: goes to the community's review. null: not allowed.
+    outcome = serializers.ChoiceField(choices=DistributionStatus.choices, allow_null=True)
+
+
+class CommunityOpportunitySerializer(serializers.ModelSerializer[OpportunityCommunity]):
+    """An opportunity in a community's list."""
+
+    share_id = serializers.UUIDField(source="pk")
+    opportunity = OpportunitySerializer()
+
+    class Meta:
+        model = OpportunityCommunity
+        fields = ("share_id", "is_featured", "opportunity")
+
+
+class SubmissionSerializer(serializers.ModelSerializer[OpportunityCommunity]):
+    """A share as the community's moderators see it, in any state."""
+
+    opportunity = OpportunitySerializer()
+    submitted_by = PersonSerializer(allow_null=True)
+
+    class Meta:
+        model = OpportunityCommunity
+        fields = (
+            "id",
+            "status",
+            "is_featured",
+            "rejection_reason",
+            "created_at",
+            "reviewed_at",
+            "submitted_by",
+            "opportunity",
+        )
+
+
+class RejectSerializer(serializers.Serializer[Any]):
+    reason = serializers.CharField(max_length=300, required=False, allow_blank=True, default="")
