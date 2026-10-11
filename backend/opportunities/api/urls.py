@@ -1,8 +1,43 @@
-from django.urls import path
+from django.urls import path, re_path
 
-from opportunities.api import views
+from opportunities.api import distribution_views, views
+
+_UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+_ACTIONS = "|".join(distribution_views.SUBMISSION_ACTIONS)
 
 urlpatterns = [
+    path(
+        "opportunities/<uuid:opportunity_id>/communities/",
+        distribution_views.OpportunitySharesView.as_view(),
+        name="opportunity-shares",
+    ),
+    path(
+        "opportunities/<uuid:opportunity_id>/communities/options/",
+        distribution_views.ShareOptionsView.as_view(),
+        name="opportunity-share-options",
+    ),
+    path(
+        "opportunities/<uuid:opportunity_id>/communities/<uuid:community_id>/",
+        distribution_views.OpportunityShareDetailView.as_view(),
+        name="opportunity-share",
+    ),
+    path(
+        "communities/<uuid:community_id>/opportunities/",
+        distribution_views.CommunityOpportunitiesView.as_view(),
+        name="community-opportunities",
+    ),
+    path(
+        "communities/<uuid:community_id>/submissions/",
+        distribution_views.CommunitySubmissionsView.as_view(),
+        name="community-submissions",
+    ),
+    # Only the known actions match; anything else is a 404, not a lookup failure.
+    re_path(
+        rf"^communities/(?P<community_id>{_UUID})/submissions/(?P<share_id>{_UUID})/"
+        rf"(?P<action>{_ACTIONS})/$",
+        distribution_views.SubmissionActionView.as_view(),
+        name="community-submission-action",
+    ),
     path("opportunities/", views.OpportunityCreateView.as_view(), name="opportunity-list"),
     path(
         "opportunities/<uuid:opportunity_id>/",

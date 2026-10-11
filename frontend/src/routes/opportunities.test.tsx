@@ -34,6 +34,7 @@ function opportunity(overrides: Partial<OpportunityDetail> = {}): OpportunityDet
     status: "PUBLISHED",
     visibility: "PUBLIC",
     moderation_status: "VISIBLE",
+    communities: [],
     work_mode: "HYBRID",
     country_code: "IN",
     region: "Kerala",

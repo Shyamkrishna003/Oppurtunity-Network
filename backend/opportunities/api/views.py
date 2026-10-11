@@ -26,9 +26,11 @@ def _detail(request: Request, opportunity_id: UUID, status_code: int = 200) -> R
         opportunity,
         selectors.get_membership(request.user, opportunity.organization_id),
     )
-    data = serializers.OpportunityDetailSerializer(
-        opportunity, context={"can_manage": can_manage}
-    ).data
+    context = {
+        "can_manage": can_manage,
+        "communities": selectors.communities_showing(request.user, opportunity),
+    }
+    data = serializers.OpportunityDetailSerializer(opportunity, context=context).data
     return Response(data, status=status_code)
 
 

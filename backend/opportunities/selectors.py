@@ -1,12 +1,16 @@
 """Read queries for opportunities. Views load objects only through these."""
 
+from dataclasses import dataclass
 from uuid import UUID
 
 from django.contrib.auth.models import AnonymousUser
 from django.db.models import Exists, OuterRef, Q, QuerySet
 from django.http import Http404
 
-from communities.models import CommunityMember, MemberStatus
+from communities.models import Community, CommunityMember, CommunityStatus, MemberStatus
+from communities.policies import actor_for
+from communities.selectors import visible_to as visible_communities
+from opportunities.distribution_policies import share_outcome
 from opportunities.models import (
     DistributionStatus,
     ModerationStatus,
@@ -92,6 +96,91 @@ def get_opportunity(viewer: Viewer, opportunity_id: UUID) -> Opportunity:
     if opportunity is None:
         raise Http404
     return opportunity
+
+
+@dataclass(frozen=True)
+class ShareOption:
+    """One of the manager's communities, and what sharing into it would do."""
+
+    community: Community
+    # The existing share's status, if the opportunity is already there.
+    current: str | None
+    # What sharing would lead to (approved at once, or pending review); None if not allowed.
+    outcome: str | None
+
+
+def list_shares(opportunity: Opportunity) -> QuerySet[OpportunityCommunity]:
+    """Every community the opportunity was offered to, for its managers."""
+    return OpportunityCommunity.objects.filter(opportunity=opportunity).select_related("community")
+
+
+def share_options(user: User, opportunity: Opportunity) -> list[ShareOption]:
+    """The communities the user is an active member of, each with what sharing would do."""
+    memberships = (
+        CommunityMember.objects.filter(
+            user=user, status=MemberStatus.ACTIVE, community__status=CommunityStatus.ACTIVE
+        )
+        .select_related("community")
+        .order_by("community__name")
+    )
+    existing = dict(
+        OpportunityCommunity.objects.filter(opportunity=opportunity).values_list(
+            "community_id", "status"
+        )
+    )
+    return [
+        ShareOption(
+            community=membership.community,
+            current=existing.get(membership.community_id),
+            outcome=share_outcome(membership.community, actor_for(user.pk, membership)),
+        )
+        for membership in memberships
+    ]
+
+
+def communities_showing(viewer: Viewer, opportunity: Opportunity) -> QuerySet[Community]:
+    """Communities where the opportunity is approved, limited to those the viewer may see:
+    a private community's name is not revealed through an opportunity."""
+    return visible_communities(viewer).filter(
+        distributions__opportunity=opportunity,
+        distributions__status=DistributionStatus.APPROVED,
+        status=CommunityStatus.ACTIVE,
+    )
+
+
+def _share_details(queryset: QuerySet[OpportunityCommunity]) -> QuerySet[OpportunityCommunity]:
+    return queryset.select_related(
+        "opportunity__organization",
+        "opportunity__creator__profile",
+        "opportunity__job",
+        "submitted_by__profile",
+    ).prefetch_related("opportunity__skills")
+
+
+def community_opportunities(
+    viewer: Viewer, community: Community, *, featured_only: bool = False
+) -> QuerySet[OpportunityCommunity]:
+    """Open opportunities a community shows, newest share first.
+
+    Approval by the community is necessary but not sufficient: the viewer must also be
+    allowed to see the opportunity itself, so the global rule is applied as well.
+    """
+    shares = OpportunityCommunity.objects.filter(
+        community=community,
+        status=DistributionStatus.APPROVED,
+        opportunity__status=OpportunityStatus.PUBLISHED,
+        opportunity__in=visible_to(viewer),
+    )
+    if featured_only:
+        shares = shares.filter(is_featured=True)
+    return _share_details(shares)
+
+
+def community_queue(
+    community: Community, status: DistributionStatus
+) -> QuerySet[OpportunityCommunity]:
+    """Shares in one state, for the community's moderators."""
+    return _share_details(OpportunityCommunity.objects.filter(community=community, status=status))
 
 
 def list_managed(user: User, status: str = "") -> QuerySet[Opportunity]:
