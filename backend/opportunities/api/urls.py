@@ -1,6 +1,6 @@
 from django.urls import path, re_path
 
-from opportunities.api import distribution_views, views
+from opportunities.api import distribution_views, feed_views, views
 
 _UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 _ACTIONS = "|".join(distribution_views.SUBMISSION_ACTIONS)
@@ -38,7 +38,17 @@ urlpatterns = [
         distribution_views.SubmissionActionView.as_view(),
         name="community-submission-action",
     ),
-    path("opportunities/", views.OpportunityCreateView.as_view(), name="opportunity-list"),
+    path("opportunities/", views.OpportunityListView.as_view(), name="opportunity-list"),
+    path(
+        "opportunities/<uuid:opportunity_id>/save/",
+        feed_views.SaveView.as_view(),
+        name="opportunity-save",
+    ),
+    path(
+        "users/me/saved-opportunities/",
+        feed_views.SavedOpportunitiesView.as_view(),
+        name="user-me-saved-opportunities",
+    ),
     path(
         "opportunities/<uuid:opportunity_id>/",
         views.OpportunityDetailView.as_view(),

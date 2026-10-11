@@ -26,6 +26,7 @@ from opportunities.models import (
     OpportunityStatus,
     OpportunityType,
     OpportunityVisibility,
+    SavedOpportunity,
 )
 from opportunities.policies import LIFECYCLE, Manager
 from organizations.models import Organization, OrganizationStatus
@@ -327,6 +328,18 @@ def archive(*, actor: User, opportunity_id: UUID) -> Opportunity:
                 organization_id=opportunity.organization_id,
             )
         return opportunity
+
+
+def save_for_later(*, user: User, opportunity_id: UUID) -> None:
+    """Bookmark an opportunity the user can see. Saving twice changes nothing."""
+    opportunity = selectors.get_opportunity(user, opportunity_id)
+    # get_or_create relies on the unique constraint to settle a double click.
+    SavedOpportunity.objects.get_or_create(user=user, opportunity=opportunity)
+
+
+def unsave(*, user: User, opportunity_id: UUID) -> None:
+    """Remove a bookmark. Works even if the opportunity is no longer visible to the user."""
+    SavedOpportunity.objects.filter(user=user, opportunity_id=opportunity_id).delete()
 
 
 def expire_due() -> int:

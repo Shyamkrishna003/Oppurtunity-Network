@@ -8,14 +8,18 @@ A multi-tenant platform where people, organizations, and communities publish, di
 
 ## Status
 
-Phases 0 to 2 are done. What works today:
+Phases 0 to 3 are done. What works today:
 
 - Accounts: register, confirm email, sign in, stay signed in across reloads, sign out, reset and change password.
 - Profiles: details, photo, skills and interests, experience, education, privacy settings, blocking.
 - Organizations: create, invite by email, roles (owner, admin, recruiter, member), remove, leave, transfer ownership.
 - Communities: public or private; open, approval or invitation-only joining; roles (owner, admin, moderator, member); requests, invitations, removal, bans; rules.
 
-A user can belong to any number of organizations and communities, with a different role in each. Opportunities, jobs, distribution and search are next (Phase 3).
+- Jobs: post personally or for an organization, publish, edit within limits, close, archive; jobs past their deadline expire automatically.
+- Distribution: share a job with communities; each community approves, rejects, removes or pins it independently.
+- Discovery: a feed with full-text search (typo-tolerant), filters kept in the address so searches can be shared, and "best match" ranking from your skills, interests, communities, location and work mode, with the reasons shown. Saved opportunities.
+
+A user can belong to any number of organizations and communities, with a different role in each. Notifications and real-time updates are next (Phase 4); applying to jobs follows in Phase 5.
 
 ## Stack
 
@@ -102,6 +106,8 @@ backend/
 ├── taxonomy/      shared skill list
 ├── organizations/ organizations, members, email invitations
 ├── communities/   communities, membership state machine, rules
+├── opportunities/ shared opportunity record, lifecycle, visibility, sharing, feed, relevance
+├── jobs/          job-specific detail, one-to-one with its opportunity
 └── audit/         append-only AuditLog and record()
 ```
 
@@ -113,5 +119,6 @@ Each domain app follows the same layering: `models.py` (schema and constraints),
 - Every response carries `X-Request-ID`; the same ID appears in backend logs, Celery task logs, and audit records.
 - Sessions: a 10-minute access token kept in memory by the web app, plus a rotating refresh token in an `HttpOnly` cookie sent only to `/api/v1/auth/`. Reusing a rotated refresh token ends that session.
 - Tenancy: organizations and communities are tenants. Every change one person makes to another's membership locks the tenant row first, checks permission, and writes an audit record; an organization or community can never be left without an owner.
+- Discovery is deterministic: relevance is a fixed sum over what the user entered (5 per matching skill, 3 per interest, 3 for a community they belong to, 2 for location, 2 for work mode), computed in SQL for ordering and explained per result. No machine learning.
 - Emails are sent by the Celery worker. Locally, read them in Mailpit (http://localhost:8025) to follow confirmation and reset links.
 - Configuration comes from environment variables only. `.env` is git-ignored; never commit real secrets.

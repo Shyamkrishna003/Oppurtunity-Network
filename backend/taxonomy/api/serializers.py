@@ -4,6 +4,7 @@ from typing import Any
 from rest_framework import serializers
 
 from taxonomy.models import Skill, normalize_skill_name
+from taxonomy.selectors import SUGGESTION_LIMIT
 
 _SKILL_NAME = re.compile(r"^[\w .+#/&-]+$")
 
@@ -12,6 +13,10 @@ class SkillSerializer(serializers.ModelSerializer[Skill]):
     class Meta:
         model = Skill
         fields = ("id", "name", "slug")
+
+
+class SkillIdsSerializer(serializers.Serializer[Any]):
+    id = serializers.ListField(child=serializers.UUIDField(), max_length=SUGGESTION_LIMIT)
 
 
 class SkillCreateSerializer(serializers.Serializer[Any]):

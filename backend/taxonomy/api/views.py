@@ -1,3 +1,4 @@
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.permissions import BasePermission, IsAuthenticated
@@ -8,7 +9,7 @@ from rest_framework.views import APIView
 
 from common.throttles import ScopedThrottle
 from taxonomy import selectors, services
-from taxonomy.api.serializers import SkillCreateSerializer, SkillSerializer
+from taxonomy.api.serializers import SkillCreateSerializer, SkillIdsSerializer, SkillSerializer
 from users.api.utils import current_user
 from users.permissions import IsVerified
 
@@ -23,12 +24,23 @@ class SkillListView(APIView):
         return [ScopedThrottle()] if self.request.method == "POST" else []
 
     @extend_schema(
-        parameters=[OpenApiParameter("q", str, description="Text to complete.")],
+        parameters=[
+            OpenApiParameter("q", str, description="Text to complete."),
+            OpenApiParameter(
+                "id", OpenApiTypes.UUID, many=True, description="Return exactly these skills."
+            ),
+        ],
         responses=SkillSerializer(many=True),
     )
     def get(self, request: Request) -> Response:
-        """Up to 20 skills matching ``q``, best match first."""
-        skills = selectors.suggest_skills(request.query_params.get("q", "")[:60])
+        """Up to 20 skills matching ``q``, best match first; or, given ``id`` (repeatable),
+        those skills, for turning IDs kept in a URL back into names."""
+        if "id" in request.query_params:
+            serializer = SkillIdsSerializer(data={"id": request.query_params.getlist("id")})
+            serializer.is_valid(raise_exception=True)
+            skills = selectors.skills_by_id(serializer.validated_data["id"])
+        else:
+            skills = selectors.suggest_skills(request.query_params.get("q", "")[:60])
         return Response(SkillSerializer(skills, many=True).data)
 
     @extend_schema(

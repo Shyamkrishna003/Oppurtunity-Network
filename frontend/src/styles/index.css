@@ -173,6 +173,16 @@ button:disabled {
   margin-right: auto;
 }
 
+/* With many links the header wraps as whole items, never in the middle of one. */
+.app-header {
+  flex-wrap: wrap;
+}
+
+.brand,
+.nav > * {
+  white-space: nowrap;
+}
+
 .page-heading {
   display: flex;
   flex-wrap: wrap;
@@ -202,6 +212,19 @@ button:disabled {
 
 .opportunity-card .chips {
   margin: 0.5rem 0 0;
+}
+
+.opportunity-card > p {
+  margin: 0.5rem 0 0;
+}
+
+.match-reasons {
+  font-size: 0.875rem;
+  color: var(--ok);
+}
+
+.button-row {
+  align-items: center;
 }
 
 .plain-fieldset {

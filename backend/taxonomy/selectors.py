@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from django.contrib.postgres.search import TrigramSimilarity
 from django.db.models import BooleanField, Case, Q, QuerySet, Value, When
 
@@ -6,6 +8,12 @@ from taxonomy.models import Skill
 SUGGESTION_LIMIT = 20
 # Low enough to catch a transposition in a short name ("pyhton" vs "Python" scores 0.27).
 _MIN_SIMILARITY = 0.25
+
+
+def skills_by_id(skill_ids: list[UUID]) -> QuerySet[Skill]:
+    """The named skills, for turning IDs kept in a URL back into names. Unknown IDs are
+    simply absent."""
+    return Skill.objects.filter(pk__in=skill_ids).order_by("name")
 
 
 def suggest_skills(query: str) -> QuerySet[Skill]:

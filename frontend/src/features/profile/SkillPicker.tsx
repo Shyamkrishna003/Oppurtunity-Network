@@ -12,9 +12,21 @@ interface SkillPickerProps {
   max?: number;
   /** Adding a skill that is not in the list yet needs a confirmed email address. */
   canCreate: boolean;
+  /**
+   * Set when the picker only chooses among existing skills (a search filter, say), so
+   * adding a new one is neither offered nor explained.
+   */
+  existingOnly?: boolean;
 }
 
-export function SkillPicker({ label, value, onChange, max = 50, canCreate }: SkillPickerProps) {
+export function SkillPicker({
+  label,
+  value,
+  onChange,
+  max = 50,
+  canCreate,
+  existingOnly = false,
+}: SkillPickerProps) {
   const inputId = useId();
   const [text, setText] = useState("");
   const typed = text.trim();
@@ -87,7 +99,7 @@ export function SkillPicker({ label, value, onChange, max = 50, canCreate }: Ski
       {settled && !hasExactMatch && (
         <p className="field-hint">
           {options.length === 0 && "No matching skill. "}
-          {canCreate ? (
+          {existingOnly ? null : canCreate ? (
             <button
               type="button"
               className="link"

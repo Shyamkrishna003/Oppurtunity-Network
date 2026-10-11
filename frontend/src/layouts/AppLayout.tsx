@@ -68,6 +68,9 @@ export function AppLayout() {
           Opportunity Network
         </Link>
         <nav aria-label="Main" className="nav nav-main">
+          <NavLink to="/opportunities" end>
+            Opportunities
+          </NavLink>
           <NavLink to="/communities">Communities</NavLink>
           <NavLink to="/organizations">Organizations</NavLink>
         </nav>

@@ -184,6 +184,7 @@ REST_FRAMEWORK = {
         "community_join": "60/hour",
         "opportunity_create": "30/day",
         "opportunity_share": "60/hour",
+        "opportunity_search": "120/min",
     },
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],

@@ -59,6 +59,18 @@ def test_suggestions_treat_wildcards_literally(api_as):
     assert names(api_as(UserFactory()).get(URL, {"q": "%"})) == []
 
 
+def test_skills_can_be_looked_up_by_id(api_as):
+    client = api_as(UserFactory())
+    python, react = Skill.objects.get(name="Python"), Skill.objects.get(name="React")
+    unknown = "0199b7c0-0000-7000-8000-000000000000"
+
+    found = client.get(f"{URL}?id={react.pk}&id={python.pk}&id={unknown}")
+
+    assert names(found) == ["Python", "React"]
+    assert client.get(f"{URL}?id=not-a-uuid").status_code == 400
+    assert client.get(URL + "?" + "&".join(f"id={unknown}" for _ in range(21))).status_code == 400
+
+
 def test_verified_users_can_add_skills(api_as):
     user = UserFactory()
     client = api_as(user)
