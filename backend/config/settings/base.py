@@ -31,6 +31,8 @@ INSTALLED_APPS = [
     "common",
     "users",
     "taxonomy",
+    "organizations",
+    "communities",
     "audit",
 ]
 
@@ -114,6 +116,8 @@ PASSWORD_RESET_TIMEOUT = 60 * 60
 LOGIN_FAILURE_LIMIT = 10
 LOGIN_FAILURE_WINDOW = timedelta(minutes=15)
 
+ORGANIZATION_INVITATION_LIFETIME = timedelta(days=7)
+
 # Redis: separate logical databases for cache, Celery broker, and the channel layer.
 CACHES = {
     "default": {
@@ -166,6 +170,11 @@ REST_FRAMEWORK = {
         "upload": "30/hour",
         "skill_create": "30/day",
         "user_block": "60/hour",
+        "organization_create": "5/day",
+        "organization_invite": "30/hour",
+        "community_create": "5/day",
+        "community_invite": "60/hour",
+        "community_join": "60/hour",
     },
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
@@ -178,4 +187,14 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "Opportunity Network API",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # Several models have a field called "status" or "role"; name each enum after its model.
+    "ENUM_NAME_OVERRIDES": {
+        "OrganizationRoleEnum": "organizations.models.OrganizationRole",
+        # Organizations and communities share one set of values: active or suspended.
+        "TenantStatusEnum": "organizations.models.OrganizationStatus",
+        "InvitationStatusEnum": "organizations.models.InvitationStatus",
+        "CommunityRoleEnum": "communities.models.CommunityRole",
+        "CommunityMemberStatusEnum": "communities.models.MemberStatus",
+        "CommunityVisibilityEnum": "communities.models.CommunityVisibility",
+    },
 }

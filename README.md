@@ -8,12 +8,14 @@ A multi-tenant platform where people, organizations, and communities publish, di
 
 ## Status
 
-Phases 0 and 1 are done. What works today:
+Phases 0 to 2 are done. What works today:
 
 - Accounts: register, confirm email, sign in, stay signed in across reloads, sign out, reset and change password.
 - Profiles: details, photo, skills and interests, experience, education, privacy settings, blocking.
+- Organizations: create, invite by email, roles (owner, admin, recruiter, member), remove, leave, transfer ownership.
+- Communities: public or private; open, approval or invitation-only joining; roles (owner, admin, moderator, member); requests, invitations, removal, bans; rules.
 
-Organizations and communities are next (Phase 2).
+A user can belong to any number of organizations and communities, with a different role in each. Opportunities, jobs, distribution and search are next (Phase 3).
 
 ## Stack
 
@@ -96,9 +98,11 @@ npm run build
 backend/
 ├── config/   settings (base/dev/test/prod), URLs, ASGI, Celery, logging
 ├── common/   base models, error envelope, pagination, request context, state machine, health
-├── users/    accounts, sessions, profiles, experience/education, blocks
-├── taxonomy/ shared skill list
-└── audit/    append-only AuditLog and record()
+├── users/         accounts, sessions, profiles, experience/education, blocks
+├── taxonomy/      shared skill list
+├── organizations/ organizations, members, email invitations
+├── communities/   communities, membership state machine, rules
+└── audit/         append-only AuditLog and record()
 ```
 
 Each domain app follows the same layering: `models.py` (schema and constraints), `policies.py` (permission rules), `selectors.py` (scoped reads), `services.py` (all writes and state transitions), `api/` (serializers, views, URLs), `tasks.py` (Celery wrappers).
@@ -108,5 +112,6 @@ Each domain app follows the same layering: `models.py` (schema and constraints),
 - Every API error uses one envelope: `{type, title, status, code, detail, errors, request_id}`.
 - Every response carries `X-Request-ID`; the same ID appears in backend logs, Celery task logs, and audit records.
 - Sessions: a 10-minute access token kept in memory by the web app, plus a rotating refresh token in an `HttpOnly` cookie sent only to `/api/v1/auth/`. Reusing a rotated refresh token ends that session.
+- Tenancy: organizations and communities are tenants. Every change one person makes to another's membership locks the tenant row first, checks permission, and writes an audit record; an organization or community can never be left without an owner.
 - Emails are sent by the Celery worker. Locally, read them in Mailpit (http://localhost:8025) to follow confirmation and reset links.
 - Configuration comes from environment variables only. `.env` is git-ignored; never commit real secrets.

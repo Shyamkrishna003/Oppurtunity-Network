@@ -4,6 +4,7 @@ import { Avatar } from "../components/Avatar";
 import { Notice } from "../components/Notice";
 import { Splash } from "../components/Splash";
 import type { Skill } from "../features/auth/types";
+import { InviteToCommunity } from "../features/communities/InviteToCommunity";
 import { useProfile, useSetBlocked } from "../features/profile/api";
 import {
   EXPERIENCE_LEVELS,
@@ -111,6 +112,7 @@ export function ProfilePage() {
         </div>
       </header>
       {setBlocked.isError && <Notice kind="error">{errorMessage(setBlocked.error)}</Notice>}
+      {!user.is_self && <InviteToCommunity userId={user.id} name={user.display_name} />}
 
       {user.bio && (
         <section className="card" aria-labelledby="about-heading">

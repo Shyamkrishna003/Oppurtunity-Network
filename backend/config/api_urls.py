@@ -7,6 +7,8 @@ urlpatterns = [
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path("", include("users.api.urls")),
     path("", include("taxonomy.api.urls")),
+    path("", include("organizations.api.urls")),
+    path("", include("communities.api.urls")),
     # Keep last: unknown API paths get the standard error envelope, in DEBUG too.
     re_path(r"^.*$", api_not_found),
 ]

@@ -43,7 +43,15 @@ extend-exclude = ["*/migrations/*"]
 select = ["E", "F", "W", "I", "B", "UP", "DJ", "SIM", "C4", "T20"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["config", "common", "users", "taxonomy", "audit"]
+known-first-party = [
+    "config",
+    "common",
+    "users",
+    "taxonomy",
+    "organizations",
+    "communities",
+    "audit",
+]
 
 [tool.mypy]
 python_version = "3.14"

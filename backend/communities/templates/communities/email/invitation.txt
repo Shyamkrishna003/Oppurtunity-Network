@@ -1,0 +1,8 @@
+{% autoescape off %}{{ inviter }} invited you to join the community {{ community }} on Opportunity Network.
+
+Sign in and open this page to accept or decline:
+
+{{ frontend_url }}{{ path }}
+
+If you were not expecting this, you can ignore this email.
+{% endautoescape %}
