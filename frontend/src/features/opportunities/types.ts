@@ -1,0 +1,104 @@
+import type { ExperienceLevel, Skill, WorkMode } from "../auth/types";
+import type { Person } from "../organizations/types";
+
+export type OpportunityType = "JOB" | "EVENT";
+export type OpportunityStatus = "DRAFT" | "PUBLISHED" | "CLOSED" | "EXPIRED" | "ARCHIVED";
+export type OpportunityVisibility = "PUBLIC" | "COMMUNITY" | "ORGANIZATION";
+export type CloseReason = "FILLED" | "CANCELLED" | "OTHER";
+export type EmploymentType = "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERNSHIP" | "TEMPORARY";
+export type SalaryPeriod = "YEAR" | "MONTH" | "HOUR";
+export type ApplicationMethod = "INTERNAL" | "EXTERNAL";
+
+export const STATUS_LABELS: Record<OpportunityStatus, string> = {
+  DRAFT: "Draft",
+  PUBLISHED: "Published",
+  CLOSED: "Closed",
+  EXPIRED: "Expired",
+  ARCHIVED: "Archived",
+};
+
+export const VISIBILITY_LABELS: Record<OpportunityVisibility, string> = {
+  PUBLIC: "Everyone",
+  COMMUNITY: "Only members of the communities it is shared with",
+  ORGANIZATION: "Only members of the organization",
+};
+
+export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
+  FULL_TIME: "Full-time",
+  PART_TIME: "Part-time",
+  CONTRACT: "Contract",
+  INTERNSHIP: "Internship",
+  TEMPORARY: "Temporary",
+};
+
+export const SALARY_PERIOD_LABELS: Record<SalaryPeriod, string> = {
+  YEAR: "per year",
+  MONTH: "per month",
+  HOUR: "per hour",
+};
+
+export const CLOSE_REASON_LABELS: Record<CloseReason, string> = {
+  FILLED: "The position was filled",
+  CANCELLED: "The opening was cancelled",
+  OTHER: "Another reason",
+};
+
+export interface JobDetail {
+  department: string;
+  employment_type: EmploymentType | "";
+  experience_level: ExperienceLevel;
+  salary_min: number | null;
+  salary_max: number | null;
+  salary_currency: string;
+  salary_period: SalaryPeriod | "";
+  application_method: ApplicationMethod;
+  external_url: string;
+  openings: number;
+}
+
+/** The fields a manager edits, as the API accepts them. */
+export interface OpportunityInput {
+  title: string;
+  description: string;
+  visibility: OpportunityVisibility;
+  work_mode: WorkMode;
+  country_code: string;
+  region: string;
+  city: string;
+  deadline: string | null;
+  skill_ids: string[];
+  job: JobDetail;
+}
+
+export interface NewOpportunityInput extends OpportunityInput {
+  type: OpportunityType;
+  organization_id: string | null;
+}
+
+export interface Opportunity extends Omit<OpportunityInput, "skill_ids"> {
+  id: string;
+  type: OpportunityType;
+  status: OpportunityStatus;
+  published_at: string | null;
+  closed_at: string | null;
+  close_reason: CloseReason | "";
+  created_at: string;
+  organization: {
+    id: string;
+    name: string;
+    slug: string;
+    verification_status: "UNVERIFIED" | "PENDING" | "VERIFIED" | "REJECTED";
+  } | null;
+  /** The person behind a personal opportunity; null when an organization posted it. */
+  posted_by: Person | null;
+  skills: Skill[];
+}
+
+export interface OpportunityDetail extends Opportunity {
+  moderation_status: "VISIBLE" | "HIDDEN" | "REMOVED";
+  viewer: {
+    can_manage: boolean;
+    /** Fields that may still be edited: null means all of them, an empty list none. */
+    editable_fields: string[] | null;
+  };
+}

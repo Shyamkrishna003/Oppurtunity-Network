@@ -33,6 +33,8 @@ INSTALLED_APPS = [
     "taxonomy",
     "organizations",
     "communities",
+    "opportunities",
+    "jobs",
     "audit",
 ]
 
@@ -146,6 +148,11 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_BEAT_SCHEDULE = {
+    "expire-opportunities": {
+        "task": "opportunities.expire_due",
+        "schedule": timedelta(minutes=5),
+        "options": {"queue": "scheduled"},
+    },
     "purge-expired-refresh-tokens": {
         "task": "users.purge_expired_refresh_tokens",
         "schedule": timedelta(hours=24),
@@ -175,6 +182,7 @@ REST_FRAMEWORK = {
         "community_create": "5/day",
         "community_invite": "60/hour",
         "community_join": "60/hour",
+        "opportunity_create": "30/day",
     },
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
@@ -194,6 +202,11 @@ SPECTACULAR_SETTINGS = {
         "TenantStatusEnum": "organizations.models.OrganizationStatus",
         "InvitationStatusEnum": "organizations.models.InvitationStatus",
         "CommunityRoleEnum": "communities.models.CommunityRole",
+        "OpportunityStatusEnum": "opportunities.models.OpportunityStatus",
+        "OpportunityVisibilityEnum": "opportunities.models.OpportunityVisibility",
+        "CloseReasonEnum": "opportunities.models.CloseReason",
+        "WorkModeEnum": "common.choices.WorkMode",
+        "ExperienceLevelEnum": "common.choices.ExperienceLevel",
         "CommunityMemberStatusEnum": "communities.models.MemberStatus",
         "CommunityVisibilityEnum": "communities.models.CommunityVisibility",
     },

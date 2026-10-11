@@ -31,6 +31,7 @@ function AccountNav() {
           {me.data.profile.display_name}
         </NavLink>
       )}
+      <NavLink to="/my/opportunities">My opportunities</NavLink>
       <NavLink to="/settings/profile">Edit profile</NavLink>
       <NavLink to="/settings/account">Account</NavLink>
       <button
