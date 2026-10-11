@@ -1,22 +1,132 @@
-import { Link, NavLink, Outlet, useNavigate } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 
 import { Avatar } from "../components/Avatar";
+import { Icon, type IconName } from "../components/Icon";
 import { useLogout, useMe, useSessionStatus } from "../features/auth/api";
 import { ResendVerification } from "../features/auth/ResendVerification";
+import type { Me } from "../features/auth/types";
 import { NotificationBell } from "../features/notifications/NotificationBell";
 
-function AccountNav() {
+function Tab({
+  to,
+  icon,
+  label,
+  end,
+  home,
+}: {
+  to: string;
+  icon: IconName;
+  label: string;
+  end?: boolean;
+  home?: boolean;
+}) {
+  return (
+    <NavLink to={to} end={end} className={home ? "tab tab-home" : "tab"}>
+      <Icon name={icon} />
+      <span className="tab-label">{label}</span>
+    </NavLink>
+  );
+}
+
+/** Everything about the signed-in person that is not a destination people visit all day. */
+function AccountMenu({ me }: { me: Me }) {
+  const location = useLocation();
+  // Remembered as "open on this page", so going anywhere closes the menu by itself.
+  const [openAt, setOpenAt] = useState<string | null>(null);
+  const open = openAt === location.key;
+  const setOpen = (value: boolean) => setOpenAt(value ? location.key : null);
+  const container = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const logout = useLogout();
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const onPointerDown = (event: PointerEvent) => {
+      if (!container.current?.contains(event.target as Node)) {
+        setOpenAt(null);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpenAt(null);
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  const { display_name: name, avatar_url: avatarUrl } = me.profile;
+  return (
+    <div ref={container} className={open ? "menu open" : "menu"}>
+      <button
+        type="button"
+        className="menu-button"
+        aria-expanded={open}
+        aria-controls="account-menu"
+        onClick={() => setOpen(!open)}
+      >
+        <Avatar name={name} url={avatarUrl} size={34} />
+        Menu
+        <Icon name="chevron" size={18} />
+      </button>
+      {/* Shown and hidden by the stylesheet, so the links are always in the page. */}
+      <nav id="account-menu" aria-label="Account" className="menu-panel">
+        <NavLink to={`/users/${me.id}`}>
+          <Avatar name={name} url={avatarUrl} size={28} />
+          {name}
+        </NavLink>
+        <div className="menu-divider" />
+        <NavLink to="/my/opportunities">
+          <Icon name="megaphone" />
+          My opportunities
+        </NavLink>
+        <NavLink to="/saved">
+          <Icon name="bookmark" />
+          Saved
+        </NavLink>
+        <NavLink to="/settings/profile">
+          <Icon name="pencil" />
+          Edit profile
+        </NavLink>
+        <NavLink to="/settings/account">
+          <Icon name="gear" />
+          Account
+        </NavLink>
+        <div className="menu-divider" />
+        <button
+          type="button"
+          disabled={logout.isPending}
+          onClick={() => {
+            // Signing out removes this menu from the page, and a mutation's own callbacks
+            // do not run for a component that is gone; the promise's do.
+            void logout
+              .mutateAsync()
+              .catch(() => undefined)
+              .finally(() => void navigate("/"));
+          }}
+        >
+          <Icon name="logout" />
+          Sign out
+        </button>
+      </nav>
+    </div>
+  );
+}
+
+function AccountArea() {
   const status = useSessionStatus();
   const me = useMe();
-  const logout = useLogout();
-  const navigate = useNavigate();
 
-  if (status === "unknown") {
-    return null;
-  }
   if (status === "anonymous") {
     return (
-      <nav aria-label="Account" className="nav">
+      <nav aria-label="Account" className="rail-foot">
         <Link to="/login">Sign in</Link>
         <Link to="/register" className="button primary">
           Create account
@@ -24,28 +134,14 @@ function AccountNav() {
       </nav>
     );
   }
-  return (
-    <nav aria-label="Account" className="nav">
-      {me.data && (
-        <NavLink to={`/users/${me.data.id}`} className="person">
-          <Avatar name={me.data.profile.display_name} url={me.data.profile.avatar_url} size={28} />
-          {me.data.profile.display_name}
-        </NavLink>
-      )}
-      <NotificationBell />
-      <NavLink to="/applications">My applications</NavLink>
-      <NavLink to="/my/opportunities">My opportunities</NavLink>
-      <NavLink to="/settings/profile">Edit profile</NavLink>
-      <NavLink to="/settings/account">Account</NavLink>
-      <button
-        type="button"
-        disabled={logout.isPending}
-        onClick={() => logout.mutate(undefined, { onSettled: () => void navigate("/") })}
-      >
-        Sign out
-      </button>
-    </nav>
-  );
+  if (status === "authenticated" && me.data) {
+    return (
+      <div className="rail-foot">
+        <AccountMenu me={me.data} />
+      </div>
+    );
+  }
+  return null;
 }
 
 function VerificationBanner() {
@@ -64,25 +160,38 @@ function VerificationBanner() {
 }
 
 export function AppLayout() {
+  const signedIn = useSessionStatus() === "authenticated";
   return (
     <div className="app-shell">
-      <header className="app-header">
+      {/* The left rail on a wide screen. On a phone: a top bar, with the navigation moved
+          to a tab bar at the bottom by the stylesheet. */}
+      <header className={signedIn ? "rail" : "rail rail-guest"}>
         <Link to="/" className="brand">
-          Opportunity Network
+          <span className="brand-mark">
+            <Icon name="spark" size={20} />
+          </span>
+          <span className="brand-name">Opportunity Network</span>
         </Link>
-        <nav aria-label="Main" className="nav nav-main">
-          <NavLink to="/opportunities" end>
-            Opportunities
-          </NavLink>
-          <NavLink to="/communities">Communities</NavLink>
-          <NavLink to="/organizations">Organizations</NavLink>
+        <nav aria-label="Main" className="rail-nav">
+          <Tab to="/" icon="home" label="Home" end home />
+          <Tab to="/opportunities" icon="compass" label="Opportunities" end />
+          <Tab to="/communities" icon="people" label="Communities" />
+          <Tab to="/organizations" icon="building" label="Organizations" />
+          {signedIn && (
+            <>
+              <Tab to="/applications" icon="briefcase" label="My applications" />
+              <NotificationBell />
+            </>
+          )}
         </nav>
-        <AccountNav />
+        <AccountArea />
       </header>
-      <VerificationBanner />
-      <main className="app-main">
-        <Outlet />
-      </main>
+      <div className="app-body">
+        <VerificationBanner />
+        <main className="app-main">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

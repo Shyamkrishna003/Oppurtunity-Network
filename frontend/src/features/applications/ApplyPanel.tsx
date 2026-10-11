@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import { Link } from "react-router";
 
+import { Confetti } from "../../components/Confetti";
 import { TextAreaField } from "../../components/Field";
 import { Notice } from "../../components/Notice";
 import { ApiError } from "../../services/http";
@@ -28,7 +29,7 @@ function resumeProblem(file: File | null): string | null {
   return null;
 }
 
-function ApplyForm({ opportunityId }: { opportunityId: string }) {
+function ApplyForm({ opportunityId, onApplied }: { opportunityId: string; onApplied: () => void }) {
   const apply = useApply(opportunityId);
   const fileId = useId();
   const [resume, setResume] = useState<File | null>(null);
@@ -49,7 +50,7 @@ function ApplyForm({ opportunityId }: { opportunityId: string }) {
     const problem = resumeProblem(resume);
     setFileError(problem);
     if (!problem && resume) {
-      apply.mutate({ resume, coverNote: coverNote.trim() });
+      apply.mutate({ resume, coverNote: coverNote.trim() }, { onSuccess: onApplied });
     }
   }
 
@@ -106,6 +107,8 @@ function ApplyForm({ opportunityId }: { opportunityId: string }) {
 export function ApplyPanel({ opportunity }: { opportunity: OpportunityDetail }) {
   const session = useSessionStatus();
   const me = useMe();
+  // True only for an application sent from this page just now, not one found on arrival.
+  const [justApplied, setJustApplied] = useState(false);
   const { application, can_apply: canApply } = opportunity.viewer;
   const takesApplicationsHere =
     opportunity.status === "PUBLISHED" && opportunity.job.application_method === "INTERNAL";
@@ -114,6 +117,7 @@ export function ApplyPanel({ opportunity }: { opportunity: OpportunityDetail }) 
   if (application) {
     content = (
       <>
+        {justApplied && <Confetti />}
         <p>
           <span className={statusBadgeClass(application.status)}>
             {APPLICATION_STATUS_LABELS[application.status]}
@@ -145,7 +149,7 @@ export function ApplyPanel({ opportunity }: { opportunity: OpportunityDetail }) 
       </Notice>
     );
   } else if (canApply) {
-    content = <ApplyForm opportunityId={opportunity.id} />;
+    content = <ApplyForm opportunityId={opportunity.id} onApplied={() => setJustApplied(true)} />;
   } else {
     return null;
   }
