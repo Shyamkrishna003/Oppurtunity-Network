@@ -5,9 +5,10 @@ from uuid import UUID
 from django.db.models import Q
 from django.http import Http404
 
+from communities.selectors import share_a_community
 from taxonomy.models import Skill
 from users import policies
-from users.models import SkillKind, User, UserBlock, UserSkill
+from users.models import ProfileVisibility, SkillKind, User, UserBlock, UserSkill
 
 
 def is_blocked_either_way(a: User, b: User) -> bool:
@@ -24,10 +25,15 @@ def get_visible_user(viewer: User, user_id: UUID) -> User:
         raise Http404
     if user.pk != viewer.pk and is_blocked_either_way(viewer, user):
         raise Http404
-    # Connections and communities do not exist yet, so "connections only" and "community
-    # members" profiles are visible to their owner and platform staff alone for now.
+    # Connections do not exist yet, so "connections only" profiles are visible to their
+    # owner and platform staff alone for now.
+    shares_community = (
+        user.profile.visibility == ProfileVisibility.COMMUNITY
+        and user.pk != viewer.pk
+        and share_a_community(viewer, user)
+    )
     if not policies.can_view_profile(
-        viewer, user.profile, is_connection=False, shares_community=False
+        viewer, user.profile, is_connection=False, shares_community=shares_community
     ):
         raise Http404
     return user

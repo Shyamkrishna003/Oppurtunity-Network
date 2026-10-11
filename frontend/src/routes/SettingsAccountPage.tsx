@@ -106,7 +106,7 @@ function BlockedUsers() {
               disabled={setBlocked.isPending}
               onClick={() => setBlocked.mutate({ userId: user.id, blocked: false })}
             >
-              Unblock<span className="visually-hidden"> {user.display_name}</span>
+              Unblock <span className="visually-hidden">{user.display_name}</span>
             </button>
           </li>
         ))}

@@ -1,0 +1,8 @@
+{% autoescape off %}{{ inviter }} invited you to join {{ organization }} on Opportunity Network as {{ role }}.
+
+Open this link to accept or decline:
+
+{{ frontend_url }}{{ path }}
+
+You need an Opportunity Network account with this email address to respond. The invitation is valid for 7 days. If you were not expecting it, you can ignore this email.
+{% endautoescape %}

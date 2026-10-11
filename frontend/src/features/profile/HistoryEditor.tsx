@@ -174,7 +174,7 @@ export function HistoryEditor({ kind }: { kind: HistoryKind }) {
                   </div>
                   <div className="button-row">
                     <button type="button" onClick={() => setEditing(entry.id)}>
-                      Edit<span className="visually-hidden"> {title}</span>
+                      Edit <span className="visually-hidden">{title}</span>
                     </button>
                     <button
                       type="button"
@@ -185,7 +185,7 @@ export function HistoryEditor({ kind }: { kind: HistoryKind }) {
                         }
                       }}
                     >
-                      Delete<span className="visually-hidden"> {title}</span>
+                      Delete <span className="visually-hidden">{title}</span>
                     </button>
                   </div>
                 </div>
