@@ -44,7 +44,9 @@ DEFAULTS: dict[Category, tuple[bool, bool]] = {
 DESCRIPTIONS: dict[Category, str] = {
     Category.INVITATIONS: "When you are invited to an organization or a community.",
     Category.MEMBERSHIP: "Decisions about your requests to join, role changes, and removals.",
-    Category.REVIEW: "Requests to join and opportunities waiting for your decision.",
+    Category.REVIEW: (
+        "Requests to join, shared opportunities and job applications waiting for your decision."
+    ),
     Category.POSTINGS: "What communities decide about your opportunities, and when one expires.",
 }
 
@@ -55,6 +57,10 @@ def _community(payload: Payload) -> str:
 
 def _opportunity(payload: Payload) -> str:
     return f"/opportunities/{payload['opportunity_id']}"
+
+
+def _application(payload: Payload) -> str:
+    return f"/applications/{payload['application_id']}"
 
 
 def _organization_invitation(notification: Notification) -> Rendered:
@@ -192,6 +198,24 @@ SPECS: dict[NotificationType, Spec] = {
             "“{opportunity_title}” has expired",
             "Its deadline passed, so it no longer takes applications. You can archive it.",
             _opportunity,
+        ),
+    ),
+    T.APPLICATION_RECEIVED: Spec(
+        Category.REVIEW,
+        True,
+        _simple(
+            "{person_name} applied to “{opportunity_title}”",
+            "Open the application to read it and see the resume.",
+            _application,
+        ),
+    ),
+    T.APPLICATION_WITHDRAWN: Spec(
+        Category.REVIEW,
+        True,
+        _simple(
+            "{person_name} withdrew from “{opportunity_title}”",
+            "They are no longer a candidate for this job.",
+            _application,
         ),
     ),
 }

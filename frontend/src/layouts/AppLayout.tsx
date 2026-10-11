@@ -33,6 +33,7 @@ function AccountNav() {
         </NavLink>
       )}
       <NotificationBell />
+      <NavLink to="/applications">My applications</NavLink>
       <NavLink to="/my/opportunities">My opportunities</NavLink>
       <NavLink to="/settings/profile">Edit profile</NavLink>
       <NavLink to="/settings/account">Account</NavLink>

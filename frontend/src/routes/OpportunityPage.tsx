@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router";
 
 import { Notice } from "../components/Notice";
 import { Splash } from "../components/Splash";
+import { ApplyPanel } from "../features/applications/ApplyPanel";
 import {
   useArchiveOpportunity,
   useCloseOpportunity,
@@ -307,6 +308,8 @@ export function OpportunityPage() {
           </ul>
         )}
       </section>
+
+      <ApplyPanel opportunity={data} />
 
       {open && job.application_method === "EXTERNAL" && (
         <section className="card" aria-labelledby="apply-heading">

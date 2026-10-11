@@ -16,6 +16,7 @@ def _isolated_state(settings, tmp_path):
     """Throttle counters and uploaded files must not leak between tests."""
     cache.clear()
     settings.MEDIA_ROOT = tmp_path / "media"
+    settings.PRIVATE_MEDIA_ROOT = tmp_path / "private"
 
 
 @pytest.fixture

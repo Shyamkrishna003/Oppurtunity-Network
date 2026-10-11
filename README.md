@@ -20,7 +20,9 @@ Phases 0 to 4 are done. What works today:
 - Discovery: a feed with full-text search (typo-tolerant), filters kept in the address so searches can be shared, and "best match" ranking from your skills, interests, communities, location and work mode, with the reasons shown. Saved opportunities.
 - Notifications: in the app and by email for invitations, membership decisions, review requests and decisions about your opportunities, with per-category preferences. They appear live over a WebSocket (`/ws/stream/`), which is only ever a hint: every notification is stored first, so nothing is lost if the connection, the worker or the browser is away.
 
-A user can belong to any number of organizations and communities, with a different role in each. Applying to jobs is next (Phase 5).
+- Applying (Phase 5, in progress): apply to a job with a PDF resume and a note, follow each application under "My applications", and withdraw. Resumes are stored privately and downloaded only through links that expire after a minute; the people who manage the job are notified. The recruiter's pipeline (moving candidates through stages) is next.
+
+A user can belong to any number of organizations and communities, with a different role in each.
 
 ## Stack
 

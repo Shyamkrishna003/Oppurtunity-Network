@@ -52,6 +52,7 @@ known-first-party = [
     "communities",
     "opportunities",
     "jobs",
+    "applications",
     "notifications",
     "realtime",
     "audit",

@@ -9,7 +9,7 @@ import type {
   Share,
   ShareOption,
 } from "../features/opportunities/types";
-import { makeSession } from "../test/fixtures";
+import { makeSession, makeViewer } from "../test/fixtures";
 import { apiError, json, mockApi } from "../test/mockApi";
 import { renderApp } from "../test/renderApp";
 
@@ -59,7 +59,7 @@ function managedJob(overrides: Partial<OpportunityDetail> = {}): OpportunityDeta
     ...opportunity(),
     moderation_status: "VISIBLE",
     communities: [],
-    viewer: { can_manage: true, editable_fields: ["deadline", "description"], is_saved: false },
+    viewer: makeViewer({ can_manage: true, editable_fields: ["deadline", "description"] }),
     ...overrides,
   };
 }
@@ -179,7 +179,7 @@ describe("sharing a job with communities", () => {
           managedJob({
             status: "DRAFT",
             published_at: null,
-            viewer: { can_manage: true, editable_fields: null, is_saved: false },
+            viewer: makeViewer({ can_manage: true, editable_fields: null }),
           }),
         ),
     });
@@ -196,7 +196,7 @@ describe("sharing a job with communities", () => {
         json(
           managedJob({
             communities: [ref("com-1", "Kochi Developers"), ref("com-2", "React India")],
-            viewer: { can_manage: false, editable_fields: [], is_saved: false },
+            viewer: makeViewer(),
           }),
         ),
     });
