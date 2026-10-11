@@ -1,8 +1,9 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { AppNotification, NotificationPreference } from "../features/notifications/types";
+import { FakeSocket } from "../test/fakeSocket";
 import { makeMe, makeSession } from "../test/fixtures";
 import { json, mockApi, noContent } from "../test/mockApi";
 import { renderApp } from "../test/renderApp";
@@ -153,6 +154,100 @@ describe("notifications page", () => {
 
     expect(await screen.findByRole("heading", { name: "Sign in" })).toBeVisible();
     expect(router.state.location.search).toBe("?next=%2Fnotifications");
+  });
+});
+
+describe("live updates", () => {
+  const TICKET = "POST /api/v1/auth/ws-ticket/";
+  const ticket = () => json({ ticket: "ticket-1", expires_in: 30 });
+
+  async function connected() {
+    await waitFor(() => expect(FakeSocket.opened).toHaveLength(1));
+    act(() => FakeSocket.latest.hello());
+    return FakeSocket.latest;
+  }
+
+  it("shows a notification the moment it is created, without reloading", async () => {
+    let existing = [notification("n-1", { is_read: true })];
+    mockApi({
+      [TICKET]: ticket,
+      [COUNT]: () => json({ count: existing.filter((n) => !n.is_read).length }),
+      [LIST]: () => page(existing),
+    });
+    FakeSocket.install();
+    renderApp("/notifications", makeSession());
+    const socket = await connected();
+    const list = await screen.findByRole("region", { name: "Your notifications" });
+    expect(await within(list).findAllByRole("listitem")).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "Notifications" })).toBeVisible();
+
+    const created = notification("n-2", { title: "Grace Hopper approved your request to join" });
+    existing = [created, ...existing];
+    act(() => socket.event("notification.created", { ...created }));
+
+    expect(
+      await within(list).findByRole("link", { name: /approved your request to join/ }),
+    ).toBeVisible();
+    expect(await screen.findByRole("link", { name: "Notifications 1 unread" })).toBeVisible();
+  });
+
+  it("clears the badge when the notifications are read in another tab", async () => {
+    let count = 2;
+    mockApi({
+      [TICKET]: ticket,
+      [COUNT]: () => json({ count }),
+      "GET /readyz": () => json({ status: "ok", checks: {} }),
+    });
+    FakeSocket.install();
+    renderApp("/", makeSession());
+    const socket = await connected();
+    expect(await screen.findByRole("link", { name: "Notifications 2 unread" })).toBeVisible();
+
+    count = 0;
+    act(() => socket.event("notification.read", { all: true }));
+
+    expect(await screen.findByRole("link", { name: "Notifications" })).toBeVisible();
+  });
+
+  it("catches up on what it missed after the connection drops and comes back", async () => {
+    let count = 0;
+    const api = mockApi({
+      [TICKET]: ticket,
+      [COUNT]: () => json({ count }),
+      "GET /readyz": () => json({ status: "ok", checks: {} }),
+    });
+    FakeSocket.install();
+    renderApp("/", makeSession());
+    const first = await connected();
+    expect(await screen.findByRole("link", { name: "Notifications" })).toBeVisible();
+
+    // Something happens while there is no connection, so nothing is pushed for it.
+    count = 4;
+    act(() => first.serverCloses(4401));
+    await waitFor(() => expect(FakeSocket.opened).toHaveLength(2));
+    act(() => FakeSocket.latest.hello());
+
+    expect(await screen.findByRole("link", { name: "Notifications 4 unread" })).toBeVisible();
+    expect(api.count(TICKET)).toBe(2);
+  });
+
+  it("is closed on signing out, and never opened for a visitor", async () => {
+    const api = mockApi({
+      [TICKET]: ticket,
+      [COUNT]: () => json({ count: 0 }),
+      "POST /api/v1/auth/logout/": noContent,
+      "GET /readyz": () => json({ status: "ok", checks: {} }),
+    });
+    FakeSocket.install();
+    renderApp("/", makeSession());
+    const socket = await connected();
+
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Sign out" }));
+
+    expect(await screen.findByRole("link", { name: "Sign in" })).toBeVisible();
+    expect(socket.closedByClient).toBe(1000);
+    expect(FakeSocket.opened).toHaveLength(1);
+    expect(api.count(TICKET)).toBe(1);
   });
 });
 

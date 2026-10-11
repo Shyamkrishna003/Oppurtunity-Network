@@ -8,7 +8,7 @@ A multi-tenant platform where people, organizations, and communities publish, di
 
 ## Status
 
-Phases 0 to 3 are done. What works today:
+Phases 0 to 4 are done. What works today:
 
 - Accounts: register, confirm email, sign in, stay signed in across reloads, sign out, reset and change password.
 - Profiles: details, photo, skills and interests, experience, education, privacy settings, blocking.
@@ -18,8 +18,9 @@ Phases 0 to 3 are done. What works today:
 - Jobs: post personally or for an organization, publish, edit within limits, close, archive; jobs past their deadline expire automatically.
 - Distribution: share a job with communities; each community approves, rejects, removes or pins it independently.
 - Discovery: a feed with full-text search (typo-tolerant), filters kept in the address so searches can be shared, and "best match" ranking from your skills, interests, communities, location and work mode, with the reasons shown. Saved opportunities.
+- Notifications: in the app and by email for invitations, membership decisions, review requests and decisions about your opportunities, with per-category preferences. They appear live over a WebSocket (`/ws/stream/`), which is only ever a hint: every notification is stored first, so nothing is lost if the connection, the worker or the browser is away.
 
-A user can belong to any number of organizations and communities, with a different role in each. Notifications and real-time updates are next (Phase 4); applying to jobs follows in Phase 5.
+A user can belong to any number of organizations and communities, with a different role in each. Applying to jobs is next (Phase 5).
 
 ## Stack
 

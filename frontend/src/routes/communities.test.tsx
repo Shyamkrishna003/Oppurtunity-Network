@@ -313,7 +313,8 @@ describe("community page", () => {
 
     await userEvent.setup().click(await screen.findByRole("button", { name: "Ban Mia Member" }));
 
-    expect(api.calls.every((call) => call.key.startsWith("GET"))).toBe(true);
+    expect(window.confirm).toHaveBeenCalled();
+    expect(api.count(`POST ${COMMUNITY}members/m-member/ban/`)).toBe(0);
   });
 
   it("edits, reorders and saves the rules as one list", async () => {

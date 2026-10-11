@@ -328,7 +328,8 @@ describe("opportunities in a community", () => {
       .setup()
       .click(await screen.findByRole("button", { name: "Reject Data Analyst" }));
 
-    expect(api.calls.every((call) => call.key.startsWith("GET"))).toBe(true);
+    expect(window.prompt).toHaveBeenCalled();
+    expect(api.count(`POST ${COMMUNITY}submissions/share-9/reject/`)).toBe(0);
   });
 
   it("lets a moderator pin, unpin and remove what the community shows", async () => {

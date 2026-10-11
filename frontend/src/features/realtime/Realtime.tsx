@@ -1,0 +1,60 @@
+import { type QueryClient, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+
+import { useAppDispatch } from "../../app/store";
+import { useSessionStatus } from "../auth/api";
+import { notificationKeys } from "../notifications/api";
+import { streamStatusChanged } from "./realtimeSlice";
+import { StreamConnection, type StreamEvent } from "./socket";
+
+function refreshNotifications(queryClient: QueryClient): void {
+  void queryClient.invalidateQueries({ queryKey: notificationKeys.unreadCount });
+  void queryClient.invalidateQueries({ queryKey: notificationKeys.lists });
+}
+
+/**
+ * An event says that something changed, not what the page should now show: the affected
+ * queries are refetched through the API, which applies the usual permission checks.
+ */
+function apply(queryClient: QueryClient, event: StreamEvent): void {
+  switch (event.type) {
+    case "notification.created":
+    case "notification.read":
+      refreshNotifications(queryClient);
+      break;
+    default:
+      // An event type from a newer server; ignoring it is always safe.
+      break;
+  }
+}
+
+/** Keeps the live connection open while someone is signed in. Renders nothing. */
+export function Realtime() {
+  const session = useSessionStatus();
+  const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (session !== "authenticated") {
+      return;
+    }
+    const connection = new StreamConnection({
+      onStatus: (status) => {
+        dispatch(streamStatusChanged(status));
+        if (status === "live") {
+          // Whatever happened while we were not connected was never pushed.
+          refreshNotifications(queryClient);
+        }
+      },
+      onEvent: (event) => {
+        apply(queryClient, event);
+      },
+    });
+    connection.start();
+    return () => {
+      connection.stop();
+    };
+  }, [session, dispatch, queryClient]);
+
+  return null;
+}

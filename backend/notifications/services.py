@@ -27,6 +27,7 @@ from notifications.models import (
     NotificationPreference,
     NotificationType,
 )
+from realtime.tasks import publish_event
 from users.models import User
 
 Preference = tuple[bool, bool]  # (in the app, by email)
@@ -96,6 +97,9 @@ def notify(
         except IntegrityError:
             return None
 
+    if in_app:
+        # Best-effort: if this push is lost, the notification is still in the list.
+        transaction.on_commit(partial(enqueue, tasks.push_notification, str(notification.pk)))
     if by_email:
         delivery = NotificationDelivery.objects.create(
             notification=notification, channel=Channel.EMAIL
@@ -134,13 +138,22 @@ def mark_read(*, user: User, notification_id: UUID) -> None:
     own = Notification.objects.filter(pk=notification_id, recipient=user, in_app=True)
     if not own.exists():
         raise Http404
-    own.filter(read_at__isnull=True).update(read_at=timezone.now())
+    if own.filter(read_at__isnull=True).update(read_at=timezone.now()):
+        _announce_read(user, {"ids": [str(notification_id)]})
 
 
 def mark_all_read(*, user: User) -> int:
-    return Notification.objects.filter(recipient=user, in_app=True, read_at__isnull=True).update(
+    marked = Notification.objects.filter(recipient=user, in_app=True, read_at__isnull=True).update(
         read_at=timezone.now()
     )
+    if marked:
+        _announce_read(user, {"all": True})
+    return marked
+
+
+def _announce_read(user: User, data: dict[str, Any]) -> None:
+    """Tell the user's other tabs and devices, so their unread badges agree."""
+    transaction.on_commit(partial(enqueue, publish_event, str(user.pk), "notification.read", data))
 
 
 # --- Preferences ------------------------------------------------------------------------

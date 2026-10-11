@@ -20,6 +20,8 @@ from rest_framework.exceptions import Throttled
 
 from audit.services import record
 from common.errors import BadRequest, BusinessRuleViolation
+from common.tasks import enqueue
+from realtime.tasks import revoke_sessions
 from users import tasks, tokens
 from users.errors import InvalidCredentials, SessionExpired
 from users.models import RefreshToken, User, UserManager
@@ -235,12 +237,24 @@ def logout(*, refresh_token: str) -> None:
         )
         if revoked:
             record(action="user.logged_out", target=token.user, actor=token.user)
+            _close_sockets(token.user)
 
 
 def _revoke_all_sessions(user: User) -> None:
     RefreshToken.objects.filter(user=user, revoked_at__isnull=True).update(
         revoked_at=timezone.now()
     )
+    _close_sockets(user)
+
+
+def _close_sockets(user: User) -> None:
+    """Close the user's open WebSockets once the session change is committed.
+
+    A socket outlives the access token that opened it, so ending a session must end its
+    sockets too. Tabs that still have a valid session (another device, after one device
+    signs out) simply reconnect with a new ticket; the ones without cannot.
+    """
+    transaction.on_commit(partial(enqueue, revoke_sessions, str(user.pk)))
 
 
 def request_password_reset(*, email: str) -> None:

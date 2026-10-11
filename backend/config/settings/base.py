@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "opportunities",
     "jobs",
     "notifications",
+    "realtime",
     "audit",
 ]
 
@@ -121,6 +122,15 @@ LOGIN_FAILURE_WINDOW = timedelta(minutes=15)
 
 ORGANIZATION_INVITATION_LIFETIME = timedelta(days=7)
 
+# WebSocket. A ticket is fetched over the API and presented once, within seconds.
+WS_TICKET_TTL = timedelta(seconds=30)
+# How often the client is told to send a heartbeat, and how long silence is tolerated.
+WS_HEARTBEAT = timedelta(seconds=30)
+WS_IDLE_TIMEOUT = timedelta(seconds=75)
+# A socket is closed after this long so the client must prove again, by getting a new
+# ticket, that its session is still valid.
+WS_SESSION_MAX_AGE = timedelta(minutes=60)
+
 # Redis: separate logical databases for cache, Celery broker, and the channel layer.
 CACHES = {
     "default": {
@@ -196,6 +206,7 @@ REST_FRAMEWORK = {
         "opportunity_create": "30/day",
         "opportunity_share": "60/hour",
         "opportunity_search": "120/min",
+        "ws_ticket": "30/min",
     },
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],

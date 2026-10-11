@@ -11,6 +11,7 @@ urlpatterns = [
     path("", include("communities.api.urls")),
     path("", include("opportunities.api.urls")),
     path("", include("notifications.api.urls")),
+    path("", include("realtime.api")),
     # Keep last: unknown API paths get the standard error envelope, in DEBUG too.
     re_path(r"^.*$", api_not_found),
 ]
