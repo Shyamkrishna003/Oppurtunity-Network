@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useNavigate } from "react-router";
 import { Avatar } from "../components/Avatar";
 import { useLogout, useMe, useSessionStatus } from "../features/auth/api";
 import { ResendVerification } from "../features/auth/ResendVerification";
+import { NotificationBell } from "../features/notifications/NotificationBell";
 
 function AccountNav() {
   const status = useSessionStatus();
@@ -31,6 +32,7 @@ function AccountNav() {
           {me.data.profile.display_name}
         </NavLink>
       )}
+      <NotificationBell />
       <NavLink to="/my/opportunities">My opportunities</NavLink>
       <NavLink to="/settings/profile">Edit profile</NavLink>
       <NavLink to="/settings/account">Account</NavLink>

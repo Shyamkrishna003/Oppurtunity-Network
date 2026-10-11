@@ -9,6 +9,7 @@ from django.http import Http404
 from communities.models import (
     Community,
     CommunityMember,
+    CommunityRole,
     CommunityStatus,
     CommunityVisibility,
     MemberStatus,
@@ -83,6 +84,21 @@ def list_members(community: Community, status: MemberStatus) -> QuerySet[Communi
     return CommunityMember.objects.filter(
         community=community, status=status, user__is_active=True
     ).select_related("user__profile")
+
+
+def reviewers(community: Community) -> QuerySet[User]:
+    """The people who decide on requests and shared opportunities: the community's active
+    owners, admins and moderators. A small, bounded set."""
+    return User.objects.filter(
+        is_active=True,
+        community_memberships__community=community,
+        community_memberships__status=MemberStatus.ACTIVE,
+        community_memberships__role__in=(
+            CommunityRole.OWNER,
+            CommunityRole.ADMIN,
+            CommunityRole.MODERATOR,
+        ),
+    ).select_related("profile")
 
 
 def share_a_community(first: User, second: User) -> bool:

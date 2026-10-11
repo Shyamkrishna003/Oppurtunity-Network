@@ -1,0 +1,8 @@
+{% autoescape off %}{{ title }}
+
+{{ body }}
+
+{{ frontend_url }}{{ path }}
+
+You are receiving this because of your notification settings on Opportunity Network. To change which emails you get: {{ frontend_url }}/settings/notifications
+{% endautoescape %}

@@ -227,6 +227,74 @@ button:disabled {
   align-items: center;
 }
 
+.bell-count {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0 0.35em;
+  border-radius: 999px;
+  background: var(--error);
+  color: var(--surface);
+  font-size: 0.75rem;
+  font-weight: 650;
+  text-align: center;
+}
+
+.notification {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.notification > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-unread {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.6rem;
+}
+
+.avatar-system {
+  width: 36px;
+  height: 36px;
+  background: var(--muted);
+}
+
+.preferences {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.preferences th,
+.preferences td {
+  padding: 0.6rem 0.5rem;
+  border-top: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.preferences thead th {
+  border-top: 0;
+  color: var(--muted);
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.preferences .field-hint {
+  font-weight: 400;
+}
+
+.preferences tbody th {
+  font-weight: 550;
+}
+
+.preferences td,
+.preferences thead th:not(:first-child) {
+  width: 6rem;
+  text-align: center;
+}
+
 .plain-fieldset {
   margin: 0;
   padding: 0;

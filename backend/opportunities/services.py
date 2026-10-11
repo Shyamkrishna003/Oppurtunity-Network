@@ -18,6 +18,8 @@ from audit.services import record
 from common.choices import WorkMode
 from common.errors import BusinessRuleViolation, Conflict, FieldErrors
 from jobs import services as job_details
+from notifications.models import NotificationType
+from notifications.services import notify
 from opportunities import policies, search, selectors
 from opportunities.models import (
     CloseReason,
@@ -355,7 +357,7 @@ def expire_due() -> int:
         type=OpportunityType.EVENT
     )
     expired = 0
-    for opportunity in due.only("pk", "organization_id").order_by("deadline")[:EXPIRY_BATCH]:
+    for opportunity in due.select_related("creator").order_by("deadline")[:EXPIRY_BATCH]:
         with transaction.atomic():
             # The same move as PUBLISHED -> EXPIRED in the lifecycle, made by the system.
             moved = Opportunity.objects.filter(
@@ -366,6 +368,17 @@ def expire_due() -> int:
                     action="opportunity.expired",
                     target=opportunity,
                     organization_id=opportunity.organization_id,
+                )
+                # Keyed, so a rerun of the sweep can never tell the same person twice.
+                notify(
+                    recipient=opportunity.creator,
+                    type=NotificationType.OPPORTUNITY_EXPIRED,
+                    target=opportunity,
+                    payload={
+                        "opportunity_id": str(opportunity.pk),
+                        "opportunity_title": opportunity.title,
+                    },
+                    dedupe_key=f"opportunity-expired:{opportunity.pk}",
                 )
                 expired += 1
     return expired
