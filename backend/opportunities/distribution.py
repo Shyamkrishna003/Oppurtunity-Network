@@ -13,6 +13,9 @@ from common.errors import BusinessRuleViolation, Conflict, FieldErrors, InvalidT
 from communities.models import Community, CommunityMember, CommunityStatus
 from communities.policies import Actor as CommunityActor
 from communities.policies import actor_for, is_member
+from communities.selectors import reviewers
+from notifications.models import NotificationType
+from notifications.services import notify, notify_each
 from opportunities import distribution_policies as policies
 from opportunities.distribution_policies import DISTRIBUTION, Reviewer, Submitter
 from opportunities.models import (
@@ -53,6 +56,59 @@ def _audit(
         organization_id=opportunity.organization_id,
         community_id=share.community_id,
         metadata={"opportunity_id": str(opportunity.pk), **metadata},
+    )
+
+
+def _about(
+    share: OpportunityCommunity, community: Community, opportunity: Opportunity
+) -> dict[str, str]:
+    return {
+        "community_id": str(community.pk),
+        "community_name": community.name,
+        "opportunity_id": str(opportunity.pk),
+        "opportunity_title": opportunity.title,
+    }
+
+
+def _notify_reviewers(
+    share: OpportunityCommunity, community: Community, opportunity: Opportunity, *, by: User
+) -> None:
+    """Something is waiting for the community's decision. Nothing to say if it went
+    straight through."""
+    if share.status != S.PENDING:
+        return
+    notify_each(
+        reviewers(community),
+        type=NotificationType.SHARE_SUBMITTED,
+        target=share,
+        actor=by,
+        payload={
+            **_about(share, community, opportunity),
+            "person_name": by.profile.display_name,
+        },
+    )
+
+
+_DECISION_NOTICES = {
+    S.APPROVED: NotificationType.SHARE_APPROVED,
+    S.REJECTED: NotificationType.SHARE_REJECTED,
+    S.REMOVED: NotificationType.SHARE_REMOVED,
+}
+
+
+def _notify_submitter(share: OpportunityCommunity, *, by: User) -> None:
+    """Tell whoever shared it what the community decided."""
+    if share.submitted_by is None:
+        return
+    payload = _about(share, share.community, share.opportunity)
+    if share.status == S.REJECTED:
+        payload["reason"] = share.rejection_reason
+    notify(
+        recipient=share.submitted_by,
+        type=_DECISION_NOTICES[DistributionStatus(share.status)],
+        target=share,
+        actor=by,
+        payload=payload,
     )
 
 
@@ -118,6 +174,7 @@ def share(
                     opportunity=opportunity,
                     status=outcome,
                 )
+                _notify_reviewers(existing, community, opportunity, by=actor)
             elif existing.status == S.REMOVED:
                 errors[str(community_id)] = [_REMOVED]
                 continue
@@ -135,6 +192,7 @@ def share(
                     opportunity=opportunity,
                     status=outcome,
                 )
+                _notify_reviewers(existing, community, opportunity, by=actor)
             shares.append(existing)
 
         if errors:
@@ -192,7 +250,7 @@ def _reviewed_share(
         raise PermissionDenied()
     existing = (
         OpportunityCommunity.objects.select_for_update(of=("self",))
-        .select_related("opportunity")
+        .select_related("opportunity", "community", "submitted_by")
         .filter(pk=share_id, community=community)
         .first()
     )
@@ -229,6 +287,7 @@ def review(
             opportunity=existing.opportunity,
             **{"from": previous, "to": decision},
         )
+        _notify_submitter(existing, by=actor)
         return existing
 
 

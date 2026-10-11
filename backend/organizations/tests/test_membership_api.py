@@ -238,6 +238,32 @@ def test_accepting_requires_a_verified_email(api_as, django_capture_on_commit_ca
     assert not OrganizationMember.objects.filter(user=invitee).exists()
 
 
+def test_an_unconfirmed_account_claiming_the_invited_address_can_do_nothing_with_the_link(
+    api_as, django_capture_on_commit_callbacks
+):
+    """Anyone can register an address they do not own. Until it is confirmed, that account
+    must not be able to see, decline or accept an invitation sent to the address."""
+    organization, members = organization_with_roles()
+    squatter = UserFactory(unverified=True)
+    with django_capture_on_commit_callbacks(execute=True):
+        invite(api_as, organization, members["OWNER"].user, squatter.email)
+    token = token_from_last_email()
+    client = api_as(squatter)
+
+    responses = [
+        client.get(invitation_url(token)),
+        client.post(invitation_url(token, "decline/")),
+        client.post(invitation_url(token, "accept/")),
+        client.get(invitation_url("0" * 64)),  # a made-up link gets the same answer
+    ]
+
+    for response in responses:
+        assert (response.status_code, response.json()["code"]) == (403, "email_not_verified")
+        assert organization.name not in response.content.decode()
+    assert OrganizationInvitation.objects.get().status == "PENDING"
+    assert not OrganizationMember.objects.filter(user=squatter).exists()
+
+
 def test_invitation_links_require_sign_in_and_a_real_token(api, api_as, invited):
     _, _, invitee, token = invited
 

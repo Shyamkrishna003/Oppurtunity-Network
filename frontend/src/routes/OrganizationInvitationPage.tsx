@@ -27,15 +27,18 @@ export function OrganizationInvitationPage() {
   }
   if (invitation.isError) {
     const status = invitation.error instanceof ApiError ? invitation.error.status : 0;
+    const code = invitation.error instanceof ApiError ? invitation.error.code : "";
     return (
       <>
         <h1>Invitation</h1>
         <Notice kind="error">
           {status === 404
             ? "This invitation link is not valid. Open the link from your email again."
-            : errorMessage(invitation.error)}
+            : code === "email_not_verified"
+              ? "Confirm your email address before opening an invitation. Use the link we emailed you, or request a new one from the banner above."
+              : errorMessage(invitation.error)}
         </Notice>
-        {status === 403 && me.data && (
+        {code === "invitation_email_mismatch" && me.data && (
           <p className="muted">You are signed in as {me.data.email}.</p>
         )}
         <p className="form-links">

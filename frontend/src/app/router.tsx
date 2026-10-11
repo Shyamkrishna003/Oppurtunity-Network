@@ -11,6 +11,7 @@ import { HomePage } from "../routes/HomePage";
 import { LoginPage } from "../routes/LoginPage";
 import { MyOpportunitiesPage } from "../routes/MyOpportunitiesPage";
 import { NotFoundPage } from "../routes/NotFoundPage";
+import { NotificationsPage } from "../routes/NotificationsPage";
 import { OpportunitiesPage } from "../routes/OpportunitiesPage";
 import { OpportunityCreatePage } from "../routes/OpportunityCreatePage";
 import { OpportunityEditPage } from "../routes/OpportunityEditPage";
@@ -25,6 +26,7 @@ import { ResetPasswordPage } from "../routes/ResetPasswordPage";
 import { RouteError } from "../routes/RouteError";
 import { SavedOpportunitiesPage } from "../routes/SavedOpportunitiesPage";
 import { SettingsAccountPage } from "../routes/SettingsAccountPage";
+import { SettingsNotificationsPage } from "../routes/SettingsNotificationsPage";
 import { SettingsProfilePage } from "../routes/SettingsProfilePage";
 import { VerifyEmailPage } from "../routes/VerifyEmailPage";
 
@@ -50,6 +52,8 @@ export const routes: RouteObject[] = [
               { path: "opportunities/:opportunityId/edit", element: <OpportunityEditPage /> },
               { path: "my/opportunities", element: <MyOpportunitiesPage /> },
               { path: "saved", element: <SavedOpportunitiesPage /> },
+              { path: "notifications", element: <NotificationsPage /> },
+              { path: "settings/notifications", element: <SettingsNotificationsPage /> },
               {
                 path: "organization-invitations/:token",
                 element: <OrganizationInvitationPage />,

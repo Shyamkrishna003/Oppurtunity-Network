@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "communities",
     "opportunities",
     "jobs",
+    "notifications",
     "audit",
 ]
 
@@ -153,6 +154,16 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": timedelta(minutes=5),
         "options": {"queue": "scheduled"},
     },
+    "redispatch-notification-deliveries": {
+        "task": "notifications.redispatch_pending",
+        "schedule": timedelta(minutes=5),
+        "options": {"queue": "scheduled"},
+    },
+    "purge-old-notifications": {
+        "task": "notifications.purge_old",
+        "schedule": timedelta(hours=24),
+        "options": {"queue": "scheduled"},
+    },
     "purge-expired-refresh-tokens": {
         "task": "users.purge_expired_refresh_tokens",
         "schedule": timedelta(hours=24),
@@ -204,6 +215,9 @@ SPECTACULAR_SETTINGS = {
         "TenantStatusEnum": "organizations.models.OrganizationStatus",
         "InvitationStatusEnum": "organizations.models.InvitationStatus",
         "CommunityRoleEnum": "communities.models.CommunityRole",
+        "OpportunityTypeEnum": "opportunities.models.OpportunityType",
+        "NotificationTypeEnum": "notifications.models.NotificationType",
+        "NotificationCategoryEnum": "notifications.models.Category",
         "OpportunityStatusEnum": "opportunities.models.OpportunityStatus",
         "OpportunityVisibilityEnum": "opportunities.models.OpportunityVisibility",
         "CloseReasonEnum": "opportunities.models.CloseReason",

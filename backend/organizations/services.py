@@ -20,6 +20,8 @@ from rest_framework.exceptions import PermissionDenied
 from audit.services import record
 from common.errors import BusinessRuleViolation, Conflict
 from common.tasks import enqueue
+from notifications.models import NotificationType
+from notifications.services import notify
 from organizations import policies, tasks, tokens
 from organizations.models import (
     InvitationStatus,
@@ -179,6 +181,25 @@ def invite(
             organization_id=organization.pk,
             metadata={"role": role},
         )
+        # The email goes to the address whether or not it has an account. Someone who has one
+        # also sees the invitation in the app, but only if they have confirmed the address:
+        # anyone can register an address they do not own, and an unconfirmed account must
+        # not be handed the invitation link. The inviter learns nothing either way.
+        invitee = User.objects.filter(
+            email=email, is_active=True, email_verified_at__isnull=False
+        ).first()
+        if invitee is not None:
+            notify(
+                recipient=invitee,
+                type=NotificationType.ORGANIZATION_INVITATION,
+                target=invitation,
+                actor=actor,
+                payload={
+                    "organization_name": organization.name,
+                    "inviter_name": actor.profile.display_name,
+                    "role_label": OrganizationRole(role).label.lower(),
+                },
+            )
         transaction.on_commit(partial(enqueue, tasks.send_invitation_email, str(invitation.pk)))
         return invitation
 
@@ -205,7 +226,14 @@ def revoke_invitation(*, actor: User, organization_id: UUID, invitation_id: UUID
 
 
 def get_invitation(*, user: User, token: str) -> OrganizationInvitation:
-    """The invitation behind a link, if it was sent to ``user``'s address."""
+    """The invitation behind a link, if it was sent to ``user``'s address.
+
+    Every use of an invitation (viewing, accepting, declining) comes through here, and all of
+    them need a confirmed address: holding an account that merely claims the invited address
+    proves nothing. Checked before the lookup, so the answer says nothing about the link.
+    """
+    if not user.is_email_verified:
+        raise PermissionDenied("Verify your email address to do this.", code="email_not_verified")
     invitation = (
         OrganizationInvitation.objects.select_related("organization", "invited_by__profile")
         .filter(token_hash=tokens.hash_token(token))
@@ -307,6 +335,17 @@ def change_role(
             organization_id=organization.pk,
             metadata={"from": previous, "to": role},
         )
+        notify(
+            recipient=target.user,
+            type=NotificationType.ORGANIZATION_ROLE_CHANGED,
+            target=target,
+            actor=actor,
+            payload={
+                "organization_id": str(organization.pk),
+                "organization_name": organization.name,
+                "role_label": OrganizationRole(role).label.lower(),
+            },
+        )
         return target
 
 
@@ -326,6 +365,13 @@ def remove_member(*, actor: User, organization_id: UUID, member_id: UUID) -> Non
             actor=actor,
             organization_id=organization.pk,
             metadata={"role": target.role},
+        )
+        notify(
+            recipient=target.user,
+            type=NotificationType.ORGANIZATION_REMOVED,
+            target=target,
+            actor=actor,
+            payload={"organization_name": organization.name},
         )
 
 

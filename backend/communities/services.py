@@ -31,6 +31,8 @@ from communities.models import (
     MemberStatus,
 )
 from communities.policies import MEMBERSHIP, Actor
+from notifications.models import NotificationType
+from notifications.services import notify, notify_each
 from users.models import User
 from users.selectors import get_visible_user
 
@@ -108,6 +110,40 @@ def _record_change(
         community_id=community.pk,
         metadata={"from": previous, "to": member.status},
     )
+    _notify_change(member, by=by, previous=previous, community=community)
+
+
+def _notify_change(
+    member: CommunityMember, *, by: User, previous: str | None, community: Community
+) -> None:
+    """Tell whoever needs to know about a membership change. ``notify`` itself skips the
+    person who made the change, so "you approved your own…" cases need no handling here."""
+    about = {"community_id": str(community.pk), "community_name": community.name}
+    status = member.status
+
+    if status == S.PENDING:
+        # A request to join: for the people who can decide on it.
+        notify_each(
+            selectors.reviewers(community),
+            type=NotificationType.COMMUNITY_JOIN_REQUESTED,
+            target=member,
+            actor=by,
+            payload={**about, "person_name": by.profile.display_name},
+        )
+        return
+
+    outcomes: dict[tuple[str | None, str], NotificationType] = {
+        (S.PENDING, S.ACTIVE): NotificationType.COMMUNITY_JOIN_APPROVED,
+        (S.PENDING, S.REJECTED): NotificationType.COMMUNITY_JOIN_REJECTED,
+        (S.ACTIVE, S.REMOVED): NotificationType.COMMUNITY_REMOVED,
+        (S.ACTIVE, S.BANNED): NotificationType.COMMUNITY_REMOVED,
+    }
+    to_the_member = outcomes.get((previous, status))
+    if status == S.INVITED:
+        to_the_member = NotificationType.COMMUNITY_INVITATION
+        about["inviter_name"] = by.profile.display_name
+    if to_the_member is not None:
+        notify(recipient=member.user, type=to_the_member, target=member, actor=by, payload=about)
 
 
 def _move(
