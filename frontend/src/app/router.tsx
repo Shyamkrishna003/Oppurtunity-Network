@@ -9,7 +9,11 @@ import { CommunityPage } from "../routes/CommunityPage";
 import { ForgotPasswordPage } from "../routes/ForgotPasswordPage";
 import { HomePage } from "../routes/HomePage";
 import { LoginPage } from "../routes/LoginPage";
+import { MyOpportunitiesPage } from "../routes/MyOpportunitiesPage";
 import { NotFoundPage } from "../routes/NotFoundPage";
+import { OpportunityCreatePage } from "../routes/OpportunityCreatePage";
+import { OpportunityEditPage } from "../routes/OpportunityEditPage";
+import { OpportunityPage } from "../routes/OpportunityPage";
 import { OrganizationCreatePage } from "../routes/OrganizationCreatePage";
 import { OrganizationInvitationPage } from "../routes/OrganizationInvitationPage";
 import { OrganizationPage } from "../routes/OrganizationPage";
@@ -39,6 +43,9 @@ export const routes: RouteObject[] = [
               // Before the ":id" routes, which would otherwise capture "new".
               { path: "organizations/new", element: <OrganizationCreatePage /> },
               { path: "communities/new", element: <CommunityCreatePage /> },
+              { path: "opportunities/new", element: <OpportunityCreatePage /> },
+              { path: "opportunities/:opportunityId/edit", element: <OpportunityEditPage /> },
+              { path: "my/opportunities", element: <MyOpportunitiesPage /> },
               {
                 path: "organization-invitations/:token",
                 element: <OrganizationInvitationPage />,
@@ -50,6 +57,8 @@ export const routes: RouteObject[] = [
           },
           { path: "organizations/:organizationId", element: <OrganizationPage /> },
           { path: "communities/:communityId", element: <CommunityPage /> },
+          // A published public job can be read without an account.
+          { path: "opportunities/:opportunityId", element: <OpportunityPage /> },
           { path: "*", element: <NotFoundPage /> },
         ],
       },

@@ -50,6 +50,8 @@ known-first-party = [
     "taxonomy",
     "organizations",
     "communities",
+    "opportunities",
+    "jobs",
     "audit",
 ]
 

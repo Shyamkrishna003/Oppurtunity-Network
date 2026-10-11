@@ -9,6 +9,7 @@ urlpatterns = [
     path("", include("taxonomy.api.urls")),
     path("", include("organizations.api.urls")),
     path("", include("communities.api.urls")),
+    path("", include("opportunities.api.urls")),
     # Keep last: unknown API paths get the standard error envelope, in DEBUG too.
     re_path(r"^.*$", api_not_found),
 ]

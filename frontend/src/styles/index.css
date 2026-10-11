@@ -187,8 +187,39 @@ button:disabled {
   margin-bottom: 1rem;
 }
 
+.search-form button {
+  flex: none;
+  white-space: nowrap;
+}
+
+.button-row + .search-form {
+  margin-top: 0.75rem;
+}
+
 .entry select {
   width: auto;
+}
+
+.plain-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1rem;
+  margin: 1rem 0 0;
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
 }
 
 .rules,

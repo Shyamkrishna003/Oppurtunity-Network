@@ -1,0 +1,358 @@
+"""Every write to opportunities, and every move through their lifecycle.
+
+An opportunity is two rows: the shared ``Opportunity`` and a type-specific detail row. They
+are created together here, in one transaction, and the lifecycle only ever moves through the
+state machine in ``policies.LIFECYCLE``.
+"""
+
+from collections.abc import Iterable
+from typing import Any
+from uuid import UUID
+
+from django.db import transaction
+from django.http import Http404
+from django.utils import timezone
+from rest_framework.exceptions import PermissionDenied
+
+from audit.services import record
+from common.choices import WorkMode
+from common.errors import BusinessRuleViolation, Conflict, FieldErrors
+from jobs import services as job_details
+from opportunities import policies, search, selectors
+from opportunities.models import (
+    CloseReason,
+    Opportunity,
+    OpportunitySkill,
+    OpportunityStatus,
+    OpportunityType,
+    OpportunityVisibility,
+)
+from opportunities.policies import LIFECYCLE, Manager
+from organizations.models import Organization, OrganizationStatus
+from taxonomy.models import Skill
+from users.models import User
+
+MAX_SKILLS = 15
+EXPIRY_BATCH = 500
+S = OpportunityStatus
+
+_LOCKED = "This cannot be changed after publishing."
+
+
+def _lock(opportunity_id: UUID) -> Opportunity:
+    opportunity = (
+        Opportunity.objects.select_for_update(of=("self",))
+        .select_related("organization", "job")
+        .filter(pk=opportunity_id)
+        .first()
+    )
+    if opportunity is None:
+        raise Http404
+    return opportunity
+
+
+def _require_manager(user: User, opportunity: Opportunity) -> Manager:
+    membership = selectors.get_membership(user, opportunity.organization_id)
+    if not policies.can_manage(user, opportunity, membership):
+        raise PermissionDenied()
+    return Manager(user)
+
+
+def _require_active_organization(organization: Organization | None) -> None:
+    if organization is not None and organization.status != OrganizationStatus.ACTIVE:
+        raise BusinessRuleViolation(
+            "This organization is suspended.", code="organization_suspended"
+        )
+
+
+def _check_visibility(visibility: str, organization_id: UUID | None) -> None:
+    if visibility == OpportunityVisibility.ORGANIZATION and organization_id is None:
+        message = "Only an organization's opportunity can be limited to its members."
+        raise BusinessRuleViolation(
+            message, code="visibility_needs_organization", errors={"visibility": [message]}
+        )
+
+
+def _set_skills(opportunity: Opportunity, skill_ids: Iterable[UUID]) -> bool:
+    """Make the opportunity's skills exactly ``skill_ids``. Returns whether anything changed."""
+    wanted = set(skill_ids)
+    if len(wanted) > MAX_SKILLS:
+        message = f"Choose at most {MAX_SKILLS} skills."
+        raise BusinessRuleViolation(
+            message, code="too_many_skills", errors={"skill_ids": [message]}
+        )
+    known = set(Skill.objects.filter(pk__in=wanted).values_list("pk", flat=True))
+    if known != wanted:
+        raise BusinessRuleViolation(
+            "Some skills do not exist.",
+            code="unknown_skill",
+            errors={"skill_ids": sorted(str(pk) for pk in wanted - known)},
+        )
+    links = OpportunitySkill.objects.filter(opportunity=opportunity)
+    current = set(links.values_list("skill_id", flat=True))
+    if current == wanted:
+        return False
+    links.filter(skill_id__in=current - wanted).delete()
+    OpportunitySkill.objects.bulk_create(
+        OpportunitySkill(opportunity=opportunity, skill_id=pk) for pk in wanted - current
+    )
+    return True
+
+
+# --- Create and edit --------------------------------------------------------------------
+
+
+def create_opportunity(
+    *,
+    creator: User,
+    type: OpportunityType,
+    organization_id: UUID | None = None,
+    skill_ids: Iterable[UUID] = (),
+    job: dict[str, Any] | None = None,
+    **fields: Any,
+) -> Opportunity:
+    """Create a draft, personal or on behalf of an organization the creator posts for."""
+    if not creator.is_email_verified:
+        raise PermissionDenied("Verify your email address to do this.", code="email_not_verified")
+    if type != OpportunityType.JOB:
+        raise BusinessRuleViolation(
+            "This type of opportunity is not available yet.", code="type_unavailable"
+        )
+
+    organization = None
+    if organization_id is not None:
+        # Not being allowed to post and the organization not existing look the same.
+        if not policies.can_post_for(selectors.get_membership(creator, organization_id)):
+            raise PermissionDenied()
+        organization = Organization.objects.get(pk=organization_id)
+        _require_active_organization(organization)
+    _check_visibility(fields.get("visibility", ""), organization_id)
+
+    with transaction.atomic():
+        opportunity = Opportunity.objects.create(
+            creator=creator, organization=organization, type=type, **fields
+        )
+        job_details.create_detail(opportunity, job or {})
+        _set_skills(opportunity, skill_ids)
+        search.reindex(opportunity)
+        record(
+            action="opportunity.created",
+            target=opportunity,
+            actor=creator,
+            organization_id=organization_id,
+            metadata={"type": type},
+        )
+        return opportunity
+
+
+def _differing(instance: Any, values: dict[str, Any]) -> dict[str, Any]:
+    """The values that would actually change something. A form that sends the whole object
+    back must not trip over fields it did not touch."""
+    return {field: value for field, value in values.items() if getattr(instance, field) != value}
+
+
+def update_opportunity(
+    *,
+    actor: User,
+    opportunity_id: UUID,
+    changes: dict[str, Any],
+    job_changes: dict[str, Any] | None = None,
+    skill_ids: Iterable[UUID] | None = None,
+) -> Opportunity:
+    """Edit an opportunity. A draft is fully editable; once published, only what cannot
+    mislead the people already looking at it."""
+    with transaction.atomic():
+        opportunity = _lock(opportunity_id)
+        _require_manager(actor, opportunity)
+        allowed = policies.editable_fields(opportunity)
+        if allowed is not None and not allowed:
+            raise Conflict(
+                "A closed opportunity can no longer be edited.", code="opportunity_not_editable"
+            )
+        changes = _differing(opportunity, changes)
+        job_changes = _differing(opportunity.job, job_changes or {})
+        current_skills = set(opportunity.skills.values_list("pk", flat=True))
+        skills_differ = skill_ids is not None and set(skill_ids) != current_skills
+
+        if allowed is not None:
+            locked = [
+                *(field for field in changes if field not in allowed),
+                *(
+                    f"job.{field}"
+                    for field in job_changes
+                    if field not in job_details.EDITABLE_WHEN_PUBLISHED
+                ),
+                *(["skill_ids"] if skills_differ else []),
+            ]
+            if locked:
+                raise BusinessRuleViolation(
+                    "Some of these details cannot be changed after publishing.",
+                    code="locked_after_publish",
+                    errors={field: [_LOCKED] for field in locked},
+                )
+            deadline = changes.get("deadline")
+            if deadline is not None and deadline <= timezone.now():
+                message = "The deadline must be in the future."
+                raise BusinessRuleViolation(
+                    message, code="deadline_passed", errors={"deadline": [message]}
+                )
+        _check_visibility(
+            changes.get("visibility", opportunity.visibility), opportunity.organization_id
+        )
+
+        for field, value in changes.items():
+            setattr(opportunity, field, value)
+        if changes:
+            opportunity.save(update_fields=[*changes, "updated_at"])
+        job_details.update_detail(opportunity.job, job_changes)
+        if skills_differ and skill_ids is not None:
+            _set_skills(opportunity, skill_ids)
+        if changes or job_changes or skills_differ:
+            search.reindex(opportunity)
+            record(
+                action="opportunity.updated",
+                target=opportunity,
+                actor=actor,
+                organization_id=opportunity.organization_id,
+                metadata={
+                    "fields": sorted(
+                        [
+                            *changes,
+                            *(f"job.{field}" for field in job_changes),
+                            *(["skill_ids"] if skills_differ else []),
+                        ]
+                    ),
+                    "status": opportunity.status,
+                },
+            )
+        return opportunity
+
+
+def delete_draft(*, actor: User, opportunity_id: UUID) -> None:
+    """Drafts can be deleted outright; anything that was ever published is archived instead."""
+    with transaction.atomic():
+        opportunity = _lock(opportunity_id)
+        _require_manager(actor, opportunity)
+        if opportunity.status != S.DRAFT:
+            raise Conflict(
+                "Only a draft can be deleted. Close and archive this opportunity instead.",
+                code="not_a_draft",
+            )
+        record(
+            action="opportunity.deleted",
+            target=opportunity,
+            actor=actor,
+            organization_id=opportunity.organization_id,
+        )
+        opportunity.delete()
+
+
+# --- Lifecycle --------------------------------------------------------------------------
+
+
+def _publication_errors(opportunity: Opportunity) -> FieldErrors:
+    """Everything still missing before this can be published, keyed like the request body."""
+    errors: FieldErrors = {}
+    if not opportunity.description.strip():
+        errors["description"] = ["Describe the opportunity."]
+    if not opportunity.work_mode:
+        errors["work_mode"] = ["Choose remote, hybrid or on-site."]
+    elif opportunity.work_mode != WorkMode.REMOTE:
+        if not opportunity.country_code:
+            errors["country_code"] = ["Give the country for a hybrid or on-site role."]
+        if not opportunity.city:
+            errors["city"] = ["Give the city for a hybrid or on-site role."]
+    if opportunity.deadline is not None and opportunity.deadline <= timezone.now():
+        errors["deadline"] = ["The deadline must be in the future."]
+    if not opportunity.skills.exists():
+        errors["skill_ids"] = ["Add at least one skill, so the right people can find this."]
+    errors.update(job_details.publication_errors(opportunity.job))
+    return errors
+
+
+def publish(*, actor: User, opportunity_id: UUID) -> Opportunity:
+    with transaction.atomic():
+        opportunity = _lock(opportunity_id)
+        manager = _require_manager(actor, opportunity)
+        # The state check comes first: a closed opportunity is a conflict, not a list of
+        # missing fields; and publishing twice changes nothing the second time.
+        if not LIFECYCLE.apply(opportunity, S.PUBLISHED, actor=manager):
+            return opportunity
+        _require_active_organization(opportunity.organization)
+        errors = _publication_errors(opportunity)
+        if errors:
+            raise BusinessRuleViolation(
+                "Complete these details before publishing.", code="incomplete", errors=errors
+            )
+        opportunity.published_at = timezone.now()
+        opportunity.save(update_fields=["status", "published_at", "updated_at"])
+        search.reindex(opportunity)
+        record(
+            action="opportunity.published",
+            target=opportunity,
+            actor=actor,
+            organization_id=opportunity.organization_id,
+        )
+        return opportunity
+
+
+def close(*, actor: User, opportunity_id: UUID, reason: CloseReason) -> Opportunity:
+    with transaction.atomic():
+        opportunity = _lock(opportunity_id)
+        manager = _require_manager(actor, opportunity)
+        if LIFECYCLE.apply(opportunity, S.CLOSED, actor=manager):
+            opportunity.closed_at = timezone.now()
+            opportunity.close_reason = reason
+            opportunity.save(update_fields=["status", "closed_at", "close_reason", "updated_at"])
+            record(
+                action="opportunity.closed",
+                target=opportunity,
+                actor=actor,
+                organization_id=opportunity.organization_id,
+                metadata={"reason": reason},
+            )
+        return opportunity
+
+
+def archive(*, actor: User, opportunity_id: UUID) -> Opportunity:
+    with transaction.atomic():
+        opportunity = _lock(opportunity_id)
+        manager = _require_manager(actor, opportunity)
+        if LIFECYCLE.apply(opportunity, S.ARCHIVED, actor=manager):
+            opportunity.save(update_fields=["status", "updated_at"])
+            record(
+                action="opportunity.archived",
+                target=opportunity,
+                actor=actor,
+                organization_id=opportunity.organization_id,
+            )
+        return opportunity
+
+
+def expire_due() -> int:
+    """Expire published opportunities whose deadline has passed. Returns how many.
+
+    Safe to run at any time and any number of times. Each row is moved by a conditional
+    update, so one that a manager closes at the same moment stays closed, and a row is never
+    expired or audited twice. Events are excluded: their deadline ends registration, not the
+    event.
+    """
+    now = timezone.now()
+    due = Opportunity.objects.filter(status=S.PUBLISHED, deadline__lt=now).exclude(
+        type=OpportunityType.EVENT
+    )
+    expired = 0
+    for opportunity in due.only("pk", "organization_id").order_by("deadline")[:EXPIRY_BATCH]:
+        with transaction.atomic():
+            # The same move as PUBLISHED -> EXPIRED in the lifecycle, made by the system.
+            moved = Opportunity.objects.filter(
+                pk=opportunity.pk, status=S.PUBLISHED, deadline__lt=now
+            ).update(status=S.EXPIRED, closed_at=now, updated_at=now)
+            if moved:
+                record(
+                    action="opportunity.expired",
+                    target=opportunity,
+                    organization_id=opportunity.organization_id,
+                )
+                expired += 1
+    return expired
