@@ -11,6 +11,7 @@ from common.email import send_templated
 from common.tasks import enqueue
 from notifications.catalog import render
 from notifications.models import Channel, DeliveryStatus, Notification, NotificationDelivery
+from realtime import events
 
 logger = structlog.get_logger(__name__)
 
@@ -69,6 +70,37 @@ def send_notification_email(delivery_id: str) -> str:
         delivery.sent_at = timezone.now()
         delivery.save(update_fields=["status", "sent_at"])
         return "sent"
+
+
+@shared_task(
+    name="notifications.push_notification",
+    queue="notifications",
+    autoretry_for=(ConnectionError, OSError),
+    retry_backoff=2,
+    retry_backoff_max=10,
+    max_retries=3,
+)
+def push_notification(notification_id: str) -> None:
+    """Show a new notification in the recipient's open tabs straight away.
+
+    Sends exactly what the list endpoint would return for it, so the client can treat the
+    two the same. Harmless to run twice: the client ignores a notification it already has.
+    """
+    # Imported here: the API layer imports from other apps, which import this module.
+    from notifications.api.serializers import NotificationSerializer
+
+    notification = (
+        Notification.objects.select_related("actor__profile")
+        .filter(pk=notification_id, in_app=True)
+        .first()
+    )
+    if notification is None:
+        return
+    events.publish(
+        notification.recipient_id,
+        "notification.created",
+        dict(NotificationSerializer(notification).data),
+    )
 
 
 @shared_task(name="notifications.redispatch_pending")

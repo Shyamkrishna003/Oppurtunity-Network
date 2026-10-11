@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { useAppSelector } from "../../app/store";
 import { http } from "../../services/http";
 import { pagedQuery } from "../../services/pagination";
 import { useSessionStatus } from "../auth/api";
@@ -8,21 +9,23 @@ import type { AppNotification, NotificationPreference } from "./types";
 export const notificationKeys = {
   all: ["notifications"] as const,
   unreadCount: ["notifications", "unread-count"] as const,
+  lists: ["notifications", "list"] as const,
   list: (unreadOnly: boolean) => ["notifications", "list", unreadOnly] as const,
   preferences: ["notifications", "preferences"] as const,
 };
 
-// Until live delivery exists, the badge is refreshed on a timer and whenever the tab is
-// looked at again.
+// The live connection normally keeps the badge current. While it is down, the badge falls
+// back to a timer, and it is always refreshed when the tab is looked at again.
 const UNREAD_REFRESH_MS = 60_000;
 
 export function useUnreadCount() {
   const status = useSessionStatus();
+  const live = useAppSelector((state) => state.realtime.status === "live");
   return useQuery({
     queryKey: notificationKeys.unreadCount,
     queryFn: ({ signal }) => http<{ count: number }>("/notifications/unread-count/", { signal }),
     enabled: status === "authenticated",
-    refetchInterval: UNREAD_REFRESH_MS,
+    refetchInterval: live ? false : UNREAD_REFRESH_MS,
     refetchOnWindowFocus: true,
     select: (data) => data.count,
   });

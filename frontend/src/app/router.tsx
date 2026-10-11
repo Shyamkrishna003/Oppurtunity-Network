@@ -1,6 +1,7 @@
-import { createBrowserRouter, type RouteObject } from "react-router";
+import { createBrowserRouter, Outlet, type RouteObject } from "react-router";
 
 import { AnonymousOnly, RequireAuth } from "../features/auth/guards";
+import { Realtime } from "../features/realtime/Realtime";
 import { AppLayout } from "../layouts/AppLayout";
 import { PublicLayout } from "../layouts/PublicLayout";
 import { CommunitiesPage } from "../routes/CommunitiesPage";
@@ -32,6 +33,13 @@ import { VerifyEmailPage } from "../routes/VerifyEmailPage";
 
 export const routes: RouteObject[] = [
   {
+    // Above both layouts, so the live connection survives moving between them.
+    element: (
+      <>
+        <Realtime />
+        <Outlet />
+      </>
+    ),
     errorElement: <RouteError />,
     children: [
       {
