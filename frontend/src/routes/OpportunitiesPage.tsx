@@ -77,7 +77,7 @@ export function OpportunitiesPage() {
         </p>
       )}
 
-      <section className="card" aria-labelledby="results-heading">
+      <section className="feed" aria-labelledby="results-heading">
         <h2 id="results-heading" className="visually-hidden">
           Results
         </h2>

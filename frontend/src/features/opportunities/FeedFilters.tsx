@@ -38,6 +38,13 @@ export function FeedFilters({ params, onChange, onClear, signedIn }: FeedFilters
   // A search is ordered by best match unless another order is chosen; browsing, by date.
   const sort = (params.get("sort") as FeedSort | null) ?? (q ? "relevant" : "newest");
   const filtered = FEED_PARAMS.some((name) => name !== "sort" && params.has(name));
+  // How many of the folded-away filters are in use (the search box and the order are not).
+  const narrowed = new Set(
+    [...params.keys()].filter(
+      (name) =>
+        name !== "sort" && name !== "q" && (FEED_PARAMS as readonly string[]).includes(name),
+    ),
+  ).size;
 
   function onSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -63,29 +70,49 @@ export function FeedFilters({ params, onChange, onClear, signedIn }: FeedFilters
   return (
     <section className="card" aria-label="Search and filters">
       {/* Keyed by what it shows, so the boxes follow the address on back and forward. */}
-      <form key={`${q}|${city}|${country}`} role="search" onSubmit={onSearch}>
-        <div className="search-form">
-          <input
-            type="search"
-            name="q"
-            defaultValue={q}
-            maxLength={120}
-            aria-label="Search opportunities"
-            placeholder="Search by title, skill, organization or place"
-          />
-          <button type="submit" className="primary">
-            Search
-          </button>
-        </div>
-        <div className="field-row">
+      <form
+        id="feed-search"
+        key={`${q}|${city}|${country}`}
+        role="search"
+        className="search-form"
+        onSubmit={onSearch}
+      >
+        <input
+          type="search"
+          name="q"
+          defaultValue={q}
+          maxLength={120}
+          aria-label="Search opportunities"
+          placeholder="Search by title, skill, organization or place"
+        />
+        <button type="submit" className="primary">
+          Search
+        </button>
+      </form>
+
+      {/* Folded away so the opportunities start near the top; open whenever one is in use. */}
+      <details className="filters" open={narrowed > 0}>
+        <summary>
+          Filters
+          {narrowed > 0 && <span className="filters-count">{narrowed}</span>}
+        </summary>
+        {/* Outside the search form in the page, but sent with it. */}
+        <div className="field-row" key={`${city}|${country}`}>
           <div className="field">
             <label htmlFor="filter-city">City</label>
-            <input id="filter-city" name="city" defaultValue={city} maxLength={80} />
+            <input
+              id="filter-city"
+              form="feed-search"
+              name="city"
+              defaultValue={city}
+              maxLength={80}
+            />
           </div>
           <div className="field">
             <label htmlFor="filter-country">Country code</label>
             <input
               id="filter-country"
+              form="feed-search"
               name="country"
               defaultValue={country}
               maxLength={2}
@@ -94,34 +121,34 @@ export function FeedFilters({ params, onChange, onClear, signedIn }: FeedFilters
             />
           </div>
         </div>
-      </form>
 
-      <div className="field-row">
-        {select("work_mode", "Work mode", WORK_MODES, "Any")}
-        {select("experience_level", "Experience", EXPERIENCE_LEVELS, "Any")}
-        {select("employment_type", "Employment type", EMPLOYMENT_TYPE_LABELS, "Any")}
-        {select("posted_within", "Posted", POSTED_WITHIN, "Any time")}
-      </div>
+        <div className="field-row">
+          {select("work_mode", "Work mode", WORK_MODES, "Any")}
+          {select("experience_level", "Experience", EXPERIENCE_LEVELS, "Any")}
+          {select("employment_type", "Employment type", EMPLOYMENT_TYPE_LABELS, "Any")}
+          {select("posted_within", "Posted", POSTED_WITHIN, "Any time")}
+        </div>
 
-      {signedIn && (
-        <>
-          <SkillPicker
-            label="Needs any of these skills"
-            value={skills.data ?? []}
-            onChange={(chosen) => onChange({ skill: chosen.map((skill) => skill.id) })}
-            max={15}
-            canCreate={false}
-            existingOnly
-          />
-          <CheckboxField
-            label="Only from communities I belong to"
-            checked={params.get("scope") === "communities"}
-            onChange={(event) => onChange({ scope: event.target.checked ? "communities" : null })}
-          />
-        </>
-      )}
+        {signedIn && (
+          <>
+            <SkillPicker
+              label="Needs any of these skills"
+              value={skills.data ?? []}
+              onChange={(chosen) => onChange({ skill: chosen.map((skill) => skill.id) })}
+              max={15}
+              canCreate={false}
+              existingOnly
+            />
+            <CheckboxField
+              label="Only from communities I belong to"
+              checked={params.get("scope") === "communities"}
+              onChange={(event) => onChange({ scope: event.target.checked ? "communities" : null })}
+            />
+          </>
+        )}
+      </details>
 
-      <div className="page-heading">
+      <div className="page-heading filters-foot">
         <div className="field">
           <label htmlFor="filter-sort">Order by</label>
           <select
