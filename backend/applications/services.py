@@ -1,6 +1,7 @@
 """Every write to applications, and every move through the pipeline."""
 
 import uuid
+from functools import partial
 from typing import Any
 from uuid import UUID
 
@@ -17,15 +18,20 @@ from applications import policies, selectors
 from applications.models import Application, ApplicationStatus, ApplicationStatusHistory
 from applications.policies import BARRIER_MESSAGES, PIPELINE, Barrier
 from audit.services import record
-from common.errors import BusinessRuleViolation, Conflict
+from common.errors import BusinessRuleViolation, Conflict, InvalidTransition
 from common.storage import download_url, private_storage
+from common.tasks import enqueue
 from notifications.models import NotificationType
-from notifications.services import notify_each
+from notifications.services import notify, notify_each
 from opportunities import selectors as opportunities
 from opportunities.models import Opportunity, OpportunityType
+from realtime.tasks import publish_event
 from users.models import User
 
 S = ApplicationStatus
+# Where a manager may send an application. Withdrawing is the applicant's, and has its own
+# function.
+MANAGER_TARGETS = frozenset({*policies.STAGES[1:], S.REJECTED})
 
 _PDF_MAGIC = b"%PDF-"
 
@@ -138,6 +144,89 @@ def _lock(user: User, application_id: UUID) -> Application:
     return application
 
 
+def _save_move(
+    application: Application, previous: str, *, by: User, action: str, note: str = ""
+) -> None:
+    """The bookkeeping every move shares. The status itself was set by the state machine."""
+    application.status_changed_at = timezone.now()
+    application.save(update_fields=["status", "status_changed_at", "updated_at"])
+    ApplicationStatusHistory.objects.create(
+        application=application,
+        from_status=previous,
+        to_status=application.status,
+        actor=by,
+        note=note,
+    )
+    # The note stays out of the audit log: it is an opinion about a person, and the log is
+    # read by more people than the application is.
+    record(
+        action=action,
+        target=application,
+        actor=by,
+        organization_id=application.opportunity.organization_id,
+        metadata={"from": previous, "to": application.status},
+    )
+
+
+def transition(
+    *,
+    user: User,
+    application_id: UUID,
+    to: ApplicationStatus,
+    expected: ApplicationStatus | None = None,
+    note: str = "",
+) -> Application:
+    """Move an application to a later stage, or reject it. For whoever manages the job.
+
+    ``expected`` is the status the caller was looking at. If someone else moved the
+    application in the meantime the move is refused (409 ``stale_state``), so two recruiters
+    cannot silently overrule each other. Asking for the status it already has is a repeat of
+    a move that worked, and changes nothing.
+    """
+    if to not in MANAGER_TARGETS:
+        raise InvalidTransition("An application cannot be moved there this way.")
+    with transaction.atomic():
+        application = _lock(user, application_id)
+        actor = selectors.actor_for(user, application)
+        if not policies.decides(actor):
+            raise PermissionDenied()
+        previous = application.status
+        if previous == to:
+            return application
+        if PIPELINE.apply(application, to, actor=actor, expected=expected):
+            _save_move(
+                application, previous, by=user, action="application.status_changed", note=note
+            )
+            opportunity, applicant = application.opportunity, application.applicant
+            rejected = to == S.REJECTED
+            notify(
+                recipient=applicant,
+                type=NotificationType.APPLICATION_REJECTED
+                if rejected
+                else NotificationType.APPLICATION_ADVANCED,
+                target=application,
+                # Deliberately no actor: the applicant hears from the employer, not from
+                # whichever recruiter pressed the button.
+                payload={
+                    **_about(application, opportunity, applicant),
+                    "status": to.value,
+                    "status_label": to.label,
+                },
+            )
+            # So an open "my applications" page updates without a reload. Only a hint: the
+            # page refetches through the API.
+            transaction.on_commit(
+                partial(
+                    enqueue,
+                    publish_event,
+                    str(applicant.pk),
+                    "application.updated",
+                    {"id": str(application.pk), "status": to.value},
+                )
+            )
+        return application
+
+
 def withdraw(*, user: User, application_id: UUID) -> Application:
     """Take one's own application back. Doing it twice changes nothing."""
     with transaction.atomic():
@@ -145,19 +234,8 @@ def withdraw(*, user: User, application_id: UUID) -> Application:
         previous = application.status
         actor = selectors.actor_for(user, application)
         if PIPELINE.apply(application, S.WITHDRAWN, actor=actor):
-            application.status_changed_at = timezone.now()
-            application.save(update_fields=["status", "status_changed_at", "updated_at"])
-            ApplicationStatusHistory.objects.create(
-                application=application, from_status=previous, to_status=S.WITHDRAWN, actor=user
-            )
+            _save_move(application, previous, by=user, action="application.withdrawn")
             opportunity = application.opportunity
-            record(
-                action="application.withdrawn",
-                target=application,
-                actor=user,
-                organization_id=opportunity.organization_id,
-                metadata={"from": previous},
-            )
             notify_each(
                 selectors.managers_of(opportunity),
                 type=NotificationType.APPLICATION_WITHDRAWN,

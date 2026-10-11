@@ -210,6 +210,33 @@ button:disabled {
   width: auto;
 }
 
+/* A control that sits in a list row has no space of its own to add below it. */
+.entry .search-form {
+  flex: none;
+  margin-bottom: 0;
+}
+
+.step-note {
+  display: block;
+  margin: 0.25rem 0 0;
+}
+
+/* Stages of a job's pipeline: links, so each one is an address that can be shared. */
+.stage-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.stage-tabs a[aria-current="page"] {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+
 .opportunity-card .chips {
   margin: 0.5rem 0 0;
 }

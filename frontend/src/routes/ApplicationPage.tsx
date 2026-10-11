@@ -4,6 +4,7 @@ import { Avatar } from "../components/Avatar";
 import { Notice } from "../components/Notice";
 import { Splash } from "../components/Splash";
 import { useApplication, useDownloadResume, useWithdraw } from "../features/applications/api";
+import { StageControl } from "../features/applications/StageControl";
 import {
   APPLICATION_STATUS_LABELS,
   statusBadgeClass,
@@ -135,12 +136,40 @@ export function ApplicationPage() {
         <Actions application={data} />
       </section>
 
+      {viewer.can_manage && (
+        <section className="card" aria-labelledby="decide-heading">
+          <h2 id="decide-heading">Decide</h2>
+          {viewer.next_statuses.length === 0 ? (
+            <p className="muted">This application has been decided and cannot be moved again.</p>
+          ) : (
+            <StageControl
+              applicationId={data.id}
+              applicantName={applicant.display_name}
+              status={data.status}
+              nextStatuses={viewer.next_statuses}
+              withNote
+            />
+          )}
+          <p>
+            <Link to={`/opportunities/${opportunity.id}/applications`}>
+              All applications for this job
+            </Link>
+          </p>
+        </section>
+      )}
+
       <section className="card" aria-labelledby="history-heading">
         <h2 id="history-heading">History</h2>
         <ol className="entry-list">
           {data.history.map((step) => (
             <li key={`${step.to_status}-${step.created_at}`} className="entry">
-              <span>{stepText(step)}</span>
+              <span>
+                {stepText(step)}
+                {step.actor && step.from_status !== "" && step.to_status !== "WITHDRAWN" && (
+                  <span className="muted"> by {step.actor.display_name}</span>
+                )}
+                {step.note && <span className="prose step-note">{step.note}</span>}
+              </span>
               <time className="muted" dateTime={step.created_at}>
                 {timeFormat.format(new Date(step.created_at))}
               </time>

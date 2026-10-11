@@ -56,6 +56,10 @@ export interface ApplicationStep {
   from_status: ApplicationStatus | "";
   to_status: ApplicationStatus;
   created_at: string;
+  /** Left by whoever made the move, for the others managing the job. Always empty for the
+   *  applicant, as is `actor`. */
+  note: string;
+  actor: Person | null;
 }
 
 export interface ApplicationDetail extends Application {
@@ -69,8 +73,29 @@ export interface ApplicationDetail extends Application {
     can_manage: boolean;
     can_withdraw: boolean;
     can_download_resume: boolean;
+    /** Where the viewer may move it now, in the order to offer them. */
+    next_statuses: ApplicationStatus[];
   };
 }
+
+/** An application as a row in its job's pipeline, for the job's managers. */
+export interface PipelineApplication {
+  id: string;
+  status: ApplicationStatus;
+  created_at: string;
+  status_changed_at: string;
+  headline: string;
+  applicant: Person;
+  next_statuses: ApplicationStatus[];
+}
+
+export interface PipelineSummary {
+  counts: Record<ApplicationStatus, number>;
+  total: number;
+  openings: number;
+}
+
+export const NOTE_MAX = 500;
 
 export const RESUME_MAX_BYTES = 5 * 1024 * 1024;
 export const COVER_NOTE_MAX = 4000;

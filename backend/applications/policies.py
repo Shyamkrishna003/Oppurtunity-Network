@@ -32,8 +32,14 @@ class Actor:
     is_manager: bool
 
 
+def decides(actor: Actor) -> bool:
+    """Whether this person is on the employer's side of the application. Nobody decides on
+    their own application, even if they have since joined the team that handles them."""
+    return actor.is_manager and not actor.is_applicant
+
+
 def _by_manager(actor: Actor | None, application: Application) -> bool:
-    return actor is not None and actor.is_manager
+    return actor is not None and decides(actor)
 
 
 def _by_applicant(actor: Actor | None, application: Application) -> bool:
@@ -59,6 +65,15 @@ def can_view(actor: Actor) -> bool:
     return actor.is_applicant or actor.is_manager
 
 
+def next_statuses(actor: Actor, application: Application) -> list[ApplicationStatus]:
+    """Where this person may move the application now: the later stages in order, then
+    rejection. Empty for the applicant (who withdraws instead) and once it is decided."""
+    if not decides(actor) or application.status not in OPEN:
+        return []
+    later = STAGES[STAGES.index(ApplicationStatus(application.status)) + 1 :]
+    return [*later, S.REJECTED]
+
+
 def can_withdraw(actor: Actor, application: Application) -> bool:
     return actor.is_applicant and application.status in OPEN
 
@@ -67,6 +82,11 @@ def can_download_resume(actor: Actor, application: Application) -> bool:
     """The applicant always; the job's managers until the application is withdrawn. Taking
     an application back takes the resume back with it."""
     return actor.is_applicant or (actor.is_manager and application.status != S.WITHDRAWN)
+
+
+def can_read_notes(actor: Actor) -> bool:
+    """Notes written with a move are for the people deciding, never for the applicant."""
+    return decides(actor)
 
 
 class Barrier(StrEnum):

@@ -39,6 +39,7 @@ DEFAULTS: dict[Category, tuple[bool, bool]] = {
     Category.MEMBERSHIP: (True, True),
     Category.REVIEW: (True, False),
     Category.POSTINGS: (True, True),
+    Category.APPLICATIONS: (True, True),
 }
 
 DESCRIPTIONS: dict[Category, str] = {
@@ -48,6 +49,7 @@ DESCRIPTIONS: dict[Category, str] = {
         "Requests to join, shared opportunities and job applications waiting for your decision."
     ),
     Category.POSTINGS: "What communities decide about your opportunities, and when one expires.",
+    Category.APPLICATIONS: "When a job you applied to moves your application on, or decides.",
 }
 
 
@@ -96,6 +98,17 @@ def _share_rejected(notification: Notification) -> Rendered:
         body=f"It will not be shown there.{reason} You can change it and offer it again.",
         url=_opportunity(p),
     )
+
+
+def _application_advanced(notification: Notification) -> Rendered:
+    p = notification.payload
+    if p["status"] == "HIRED":
+        title = f"You were selected for “{p['opportunity_title']}”"
+        body = "Congratulations. The employer marked your application as hired."
+    else:
+        title = f"Your application to “{p['opportunity_title']}” moved to {p['status_label']}"
+        body = "Open your application to see where it stands."
+    return Rendered(title=title, body=body, url=_application(p))
 
 
 SPECS: dict[NotificationType, Spec] = {
@@ -215,6 +228,16 @@ SPECS: dict[NotificationType, Spec] = {
         _simple(
             "{person_name} withdrew from “{opportunity_title}”",
             "They are no longer a candidate for this job.",
+            _application,
+        ),
+    ),
+    T.APPLICATION_ADVANCED: Spec(Category.APPLICATIONS, True, _application_advanced),
+    T.APPLICATION_REJECTED: Spec(
+        Category.APPLICATIONS,
+        True,
+        _simple(
+            "Your application to “{opportunity_title}” was not selected",
+            "The employer has decided not to take it further. Thank you for applying.",
             _application,
         ),
     ),

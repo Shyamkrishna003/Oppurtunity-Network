@@ -20,6 +20,8 @@ class NotificationType(models.TextChoices):
     OPPORTUNITY_EXPIRED = "OPPORTUNITY_EXPIRED", "Opportunity expired"
     APPLICATION_RECEIVED = "APPLICATION_RECEIVED", "Someone applied to a job"
     APPLICATION_WITHDRAWN = "APPLICATION_WITHDRAWN", "An application was withdrawn"
+    APPLICATION_ADVANCED = "APPLICATION_ADVANCED", "Your application moved forward"
+    APPLICATION_REJECTED = "APPLICATION_REJECTED", "Your application was not selected"
 
 
 class Category(models.TextChoices):
@@ -30,6 +32,7 @@ class Category(models.TextChoices):
     MEMBERSHIP = "MEMBERSHIP", "My memberships"
     REVIEW = "REVIEW", "Things waiting for my review"
     POSTINGS = "POSTINGS", "My opportunities"
+    APPLICATIONS = "APPLICATIONS", "My applications"
 
 
 class Channel(models.TextChoices):

@@ -2,6 +2,7 @@ import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 import { useAppDispatch } from "../../app/store";
+import { applicationKeys } from "../applications/api";
 import { useSessionStatus } from "../auth/api";
 import { notificationKeys } from "../notifications/api";
 import { streamStatusChanged } from "./realtimeSlice";
@@ -21,6 +22,12 @@ function apply(queryClient: QueryClient, event: StreamEvent): void {
     case "notification.created":
     case "notification.read":
       refreshNotifications(queryClient);
+      break;
+    case "application.updated":
+      // One of the viewer's applications moved: its page, "my applications", and the job
+      // page that shows its status.
+      void queryClient.invalidateQueries({ queryKey: applicationKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["opportunities"] });
       break;
     default:
       // An event type from a newer server; ignoring it is always safe.
