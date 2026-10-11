@@ -94,6 +94,33 @@ export interface Opportunity extends Omit<OpportunityInput, "skill_ids"> {
   skills: Skill[];
 }
 
+export type MatchKind = "skill" | "interest" | "community" | "location" | "work_mode";
+
+/** Why an opportunity fits the signed-in user: a fixed sum over what they told us. */
+export interface Match {
+  score: number;
+  reasons: { kind: MatchKind; label: string }[];
+}
+
+/** An opportunity in the feed. `match` is null for visitors. */
+export interface FeedItem extends Opportunity {
+  is_saved: boolean;
+  match: Match | null;
+}
+
+export interface SavedItem {
+  saved_at: string;
+  opportunity: Opportunity;
+}
+
+export type FeedSort = "newest" | "deadline" | "relevant";
+
+export const SORT_LABELS: Record<FeedSort, string> = {
+  relevant: "Best match",
+  newest: "Newest",
+  deadline: "Closing soonest",
+};
+
 export type ShareStatus = "PENDING" | "APPROVED" | "REJECTED" | "REMOVED";
 
 export const SHARE_STATUS_LABELS: Record<ShareStatus, string> = {
@@ -157,5 +184,6 @@ export interface OpportunityDetail extends Opportunity {
     can_manage: boolean;
     /** Fields that may still be edited: null means all of them, an empty list none. */
     editable_fields: string[] | null;
+    is_saved: boolean;
   };
 }

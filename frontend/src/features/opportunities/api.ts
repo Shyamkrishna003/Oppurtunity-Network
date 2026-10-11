@@ -3,14 +3,17 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { http } from "../../services/http";
 import { pagedQuery } from "../../services/pagination";
 import { useSessionStatus } from "../auth/api";
+import type { Skill } from "../auth/types";
 import type {
   CloseReason,
   CommunityOpportunity,
+  FeedItem,
   NewOpportunityInput,
   Opportunity,
   OpportunityDetail,
   OpportunityInput,
   OpportunityStatus,
+  SavedItem,
   Share,
   ShareOption,
   Submission,
@@ -82,6 +85,46 @@ export function useArchiveOpportunity(id: string) {
 
 export function useDeleteOpportunity(id: string) {
   return useOpportunityMutation(() => http<void>(`/opportunities/${id}/`, { method: "DELETE" }));
+}
+
+// --- Feed and saved ---------------------------------------------------------------------
+
+/**
+ * The feed for a set of URL parameters (passed as their query string, so two equal
+ * searches share one cache entry). Keyed by session too: results, saved flags and match
+ * reasons all depend on who is asking.
+ */
+export function useFeed(search: string) {
+  const status = useSessionStatus();
+  return useInfiniteQuery({
+    queryKey: [...keys.all, "feed", search, status],
+    ...pagedQuery<FeedItem>(`/opportunities/${search ? `?${search}` : ""}`),
+    enabled: status !== "unknown",
+  });
+}
+
+export function useSavedOpportunities() {
+  return useInfiniteQuery({
+    queryKey: [...keys.all, "saved"],
+    ...pagedQuery<SavedItem>("/users/me/saved-opportunities/"),
+  });
+}
+
+export function useSetSaved() {
+  return useOpportunityMutation(({ id, saved }: { id: string; saved: boolean }) =>
+    http<void>(`/opportunities/${id}/save/`, { method: saved ? "PUT" : "DELETE" }),
+  );
+}
+
+/** Names for the skill IDs kept in the feed's URL. */
+export function useSkillsById(ids: string[]) {
+  const search = ids.map((id) => `id=${encodeURIComponent(id)}`).join("&");
+  return useQuery({
+    queryKey: ["skills", "by-id", search],
+    queryFn: ({ signal }) => http<Skill[]>(`/skills/?${search}`, { signal }),
+    enabled: ids.length > 0,
+    staleTime: 60 * 60_000,
+  });
 }
 
 // --- Sharing with communities -----------------------------------------------------------

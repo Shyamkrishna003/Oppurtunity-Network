@@ -3,16 +3,20 @@ from typing import Any
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from common.choices import ExperienceLevel, WorkMode
 from communities.api.serializers import CommunityRefSerializer
+from jobs.models import EmploymentType
 from jobs.serializers import JobDetailSerializer
 from opportunities import policies
 from opportunities.distribution import MAX_COMMUNITIES_PER_SHARE
+from opportunities.feed import SCOPES, SORTS
 from opportunities.models import (
     CloseReason,
     DistributionStatus,
     Opportunity,
     OpportunityCommunity,
     OpportunityType,
+    SavedOpportunity,
 )
 from opportunities.services import MAX_SKILLS
 from organizations.api.serializers import PersonSerializer
@@ -80,6 +84,7 @@ class OpportunityViewerSerializer(serializers.Serializer[Any]):
     can_manage = serializers.BooleanField()
     # Fields the caller may still edit: null means all of them, an empty list means none.
     editable_fields = serializers.ListField(child=serializers.CharField(), allow_null=True)
+    is_saved = serializers.BooleanField()
 
 
 class OpportunitySerializer(serializers.ModelSerializer[Opportunity]):
@@ -147,7 +152,85 @@ class OpportunityDetailSerializer(OpportunitySerializer):
             "editable_fields": (None if editable is None else sorted(editable))
             if can_manage
             else [],
+            "is_saved": self.context.get("is_saved", False),
         }
+
+
+# --- Feed and saved ---------------------------------------------------------------------
+
+
+class FeedQuerySerializer(serializers.Serializer[Any]):
+    """The feed's URL parameters. Every one is optional; unknown values are a 400."""
+
+    q = serializers.CharField(required=False, max_length=120, help_text="Search text.")
+    type = serializers.ChoiceField(choices=OpportunityType.choices, required=False)
+    skill = serializers.ListField(
+        child=serializers.UUIDField(),
+        required=False,
+        max_length=MAX_SKILLS,
+        help_text="Repeatable. Matches opportunities needing any of these skills.",
+    )
+    country = serializers.RegexField(r"^[A-Za-z]{2}$", required=False)
+    city = serializers.CharField(required=False, max_length=80)
+    work_mode = serializers.ChoiceField(choices=WorkMode.choices, required=False)
+    experience_level = serializers.ChoiceField(choices=ExperienceLevel.choices, required=False)
+    employment_type = serializers.ChoiceField(choices=EmploymentType.choices, required=False)
+    community = serializers.UUIDField(required=False)
+    organization = serializers.UUIDField(required=False)
+    deadline_before = serializers.DateTimeField(required=False)
+    deadline_after = serializers.DateTimeField(required=False)
+    posted_within = serializers.IntegerField(
+        required=False, min_value=1, max_value=365, help_text="Days."
+    )
+    saved = serializers.BooleanField(required=False)
+    scope = serializers.ChoiceField(
+        choices=SCOPES, required=False, help_text="communities: only from communities I am in."
+    )
+    sort = serializers.ChoiceField(
+        choices=SORTS,
+        required=False,
+        help_text="Default: relevant when searching, otherwise newest.",
+    )
+
+
+class MatchReasonSerializer(serializers.Serializer[Any]):
+    kind = serializers.ChoiceField(
+        choices=("skill", "interest", "community", "location", "work_mode")
+    )
+
+    def get_fields(self) -> dict[str, Any]:
+        # "label" cannot be declared as a class attribute: serializers already have one.
+        return {**super().get_fields(), "label": serializers.CharField()}
+
+
+class MatchSerializer(serializers.Serializer[Any]):
+    """Why this opportunity fits the caller: a fixed sum over what they told us."""
+
+    score = serializers.IntegerField()
+    reasons = MatchReasonSerializer(many=True)
+
+
+class FeedItemSerializer(OpportunitySerializer):
+    is_saved = serializers.BooleanField(read_only=True)
+    match = serializers.SerializerMethodField()
+
+    class Meta(OpportunitySerializer.Meta):
+        fields = (*OpportunitySerializer.Meta.fields, "is_saved", "match")
+
+    @extend_schema_field(MatchSerializer(allow_null=True))
+    def get_match(self, opportunity: Opportunity) -> Any:
+        """Null for visitors: there is no profile to match against."""
+        match = self.context.get("matches", {}).get(opportunity.pk)
+        return MatchSerializer(match).data if match is not None else None
+
+
+class SavedOpportunitySerializer(serializers.ModelSerializer[SavedOpportunity]):
+    saved_at = serializers.DateTimeField(source="created_at")
+    opportunity = OpportunitySerializer()
+
+    class Meta:
+        model = SavedOpportunity
+        fields = ("saved_at", "opportunity")
 
 
 # --- Sharing with communities -----------------------------------------------------------

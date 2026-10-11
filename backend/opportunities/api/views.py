@@ -8,11 +8,13 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.throttling import BaseThrottle
 from rest_framework.views import APIView
 
 from common.throttles import ScopedThrottle
 from opportunities import policies, selectors, services
 from opportunities.api import serializers
+from opportunities.api.feed_views import feed_response
 from opportunities.models import CloseReason, Opportunity, OpportunityStatus, OpportunityType
 from users.api.utils import current_user
 from users.permissions import IsVerified
@@ -29,15 +31,38 @@ def _detail(request: Request, opportunity_id: UUID, status_code: int = 200) -> R
     context = {
         "can_manage": can_manage,
         "communities": selectors.communities_showing(request.user, opportunity),
+        "is_saved": selectors.is_saved(request.user, opportunity),
     }
     data = serializers.OpportunityDetailSerializer(opportunity, context=context).data
     return Response(data, status=status_code)
 
 
-class OpportunityCreateView(APIView):
-    permission_classes = [IsVerified]
-    throttle_classes = [ScopedThrottle]
-    throttle_scope = "opportunity_create"
+class OpportunityListView(APIView):
+    """``GET`` is the public feed; ``POST`` creates a draft."""
+
+    def get_permissions(self) -> list[BasePermission]:
+        return [IsVerified()] if self.request.method == "POST" else [AllowAny()]
+
+    def get_throttles(self) -> list[BaseThrottle]:
+        throttle = ScopedThrottle()
+        # ScopedThrottle reads the scope from the view, and the two methods have their own.
+        self.throttle_scope = (
+            "opportunity_create" if self.request.method == "POST" else "opportunity_search"
+        )
+        return [throttle]
+
+    @extend_schema(
+        parameters=[serializers.FeedQuerySerializer],
+        responses=serializers.FeedItemSerializer(many=True),
+    )
+    def get(self, request: Request) -> Response:
+        """Search and browse open opportunities the caller may see.
+
+        Signed-in callers also get, for each result, whether they saved it and why it fits
+        them. Ordering by ``newest`` pages with a cursor; other orders page by offset and
+        stop at 500 results.
+        """
+        return feed_response(request, self)
 
     @extend_schema(
         request=serializers.OpportunityCreateSerializer,

@@ -11,6 +11,7 @@ import { HomePage } from "../routes/HomePage";
 import { LoginPage } from "../routes/LoginPage";
 import { MyOpportunitiesPage } from "../routes/MyOpportunitiesPage";
 import { NotFoundPage } from "../routes/NotFoundPage";
+import { OpportunitiesPage } from "../routes/OpportunitiesPage";
 import { OpportunityCreatePage } from "../routes/OpportunityCreatePage";
 import { OpportunityEditPage } from "../routes/OpportunityEditPage";
 import { OpportunityPage } from "../routes/OpportunityPage";
@@ -22,6 +23,7 @@ import { ProfilePage } from "../routes/ProfilePage";
 import { RegisterPage } from "../routes/RegisterPage";
 import { ResetPasswordPage } from "../routes/ResetPasswordPage";
 import { RouteError } from "../routes/RouteError";
+import { SavedOpportunitiesPage } from "../routes/SavedOpportunitiesPage";
 import { SettingsAccountPage } from "../routes/SettingsAccountPage";
 import { SettingsProfilePage } from "../routes/SettingsProfilePage";
 import { VerifyEmailPage } from "../routes/VerifyEmailPage";
@@ -37,6 +39,7 @@ export const routes: RouteObject[] = [
           // Organizations and public communities can be browsed without an account.
           { path: "organizations", element: <OrganizationsPage /> },
           { path: "communities", element: <CommunitiesPage /> },
+          { path: "opportunities", element: <OpportunitiesPage /> },
           {
             element: <RequireAuth />,
             children: [
@@ -46,6 +49,7 @@ export const routes: RouteObject[] = [
               { path: "opportunities/new", element: <OpportunityCreatePage /> },
               { path: "opportunities/:opportunityId/edit", element: <OpportunityEditPage /> },
               { path: "my/opportunities", element: <MyOpportunitiesPage /> },
+              { path: "saved", element: <SavedOpportunitiesPage /> },
               {
                 path: "organization-invitations/:token",
                 element: <OrganizationInvitationPage />,

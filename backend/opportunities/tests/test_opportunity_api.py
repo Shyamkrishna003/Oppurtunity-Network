@@ -85,7 +85,7 @@ def test_creating_a_personal_job_makes_a_draft_with_its_detail_row(api_as):
     assert [s["name"] for s in body["skills"]] == ["Django", "Python"]
     assert body["job"]["salary_currency"] == "INR"
     assert (body["job"]["application_method"], body["job"]["openings"]) == ("INTERNAL", 2)
-    assert body["viewer"] == {"can_manage": True, "editable_fields": None}
+    assert body["viewer"] == {"can_manage": True, "editable_fields": None, "is_saved": False}
     opportunity = Opportunity.objects.get(pk=body["id"])
     assert opportunity.creator == user
     assert JobDetail.objects.filter(opportunity=opportunity).exists()
@@ -277,6 +277,7 @@ def test_people_who_can_see_a_published_job_but_not_manage_it_are_refused(api_as
         assert client.get(detail(job)).json()["viewer"] == {
             "can_manage": False,
             "editable_fields": [],
+            "is_saved": False,
         }
         assert client.patch(detail(job), {"description": "Hacked"}).status_code == 403
         assert client.post(detail(job, "close/"), {"reason": "OTHER"}).status_code == 403

@@ -11,6 +11,7 @@ import {
   usePublishOpportunity,
 } from "../features/opportunities/api";
 import { formatDate, formatSalary } from "../features/opportunities/format";
+import { SaveButton } from "../features/opportunities/SaveButton";
 import { SharePanel } from "../features/opportunities/SharePanel";
 import {
   CLOSE_REASON_LABELS,
@@ -207,7 +208,12 @@ export function OpportunityPage() {
     <>
       <div className="page-heading">
         <h1>{data.title}</h1>
-        <span className={open ? "badge badge-ok" : "badge"}>{STATUS_LABELS[data.status]}</span>
+        <div className="button-row">
+          <span className={open ? "badge badge-ok" : "badge"}>{STATUS_LABELS[data.status]}</span>
+          {data.status !== "DRAFT" && (
+            <SaveButton id={data.id} title={data.title} saved={data.viewer.is_saved} />
+          )}
+        </div>
       </div>
       <p>
         {data.organization ? (

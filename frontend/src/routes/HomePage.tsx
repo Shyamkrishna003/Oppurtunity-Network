@@ -15,11 +15,11 @@ export function HomePage() {
       </p>
       {status === "authenticated" && (
         <section className="card" aria-labelledby="next-heading">
-          <h2 id="next-heading">Get ready</h2>
+          <h2 id="next-heading">Find your next opportunity</h2>
           <p>
-            Opportunities are matched to the skills, interests and location on your profile.{" "}
-            <Link to="/settings/profile">Complete your profile</Link> so the right ones reach you
-            first.
+            <Link to="/opportunities?sort=relevant">See the opportunities that match you best</Link>
+            . They are ranked by the skills, interests and location on your profile, so{" "}
+            <Link to="/settings/profile">keeping it complete</Link> puts the right ones first.
           </p>
         </section>
       )}

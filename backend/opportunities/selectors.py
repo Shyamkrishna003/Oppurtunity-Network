@@ -18,6 +18,7 @@ from opportunities.models import (
     OpportunityCommunity,
     OpportunityStatus,
     OpportunityVisibility,
+    SavedOpportunity,
 )
 from opportunities.policies import POSTING_ROLES
 from organizations.models import MembershipStatus, OrganizationMember
@@ -181,6 +182,28 @@ def community_queue(
 ) -> QuerySet[OpportunityCommunity]:
     """Shares in one state, for the community's moderators."""
     return _share_details(OpportunityCommunity.objects.filter(community=community, status=status))
+
+
+def list_saved(user: User) -> QuerySet[SavedOpportunity]:
+    """What the user saved, most recently saved first, in whatever state it is now.
+
+    Something saved and later hidden, archived or restricted drops out: saving it does not
+    keep it visible.
+    """
+    return (
+        SavedOpportunity.objects.filter(user=user, opportunity__in=visible_to(user))
+        .select_related(
+            "opportunity__organization", "opportunity__creator__profile", "opportunity__job"
+        )
+        .prefetch_related("opportunity__skills")
+    )
+
+
+def is_saved(viewer: Viewer, opportunity: Opportunity) -> bool:
+    return (
+        viewer.is_authenticated
+        and SavedOpportunity.objects.filter(user=viewer, opportunity=opportunity).exists()
+    )
 
 
 def list_managed(user: User, status: str = "") -> QuerySet[Opportunity]:

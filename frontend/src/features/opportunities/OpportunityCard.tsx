@@ -5,15 +5,20 @@ import { EXPERIENCE_LEVELS, formatLocation, WORK_MODES } from "../profile/labels
 import { formatDate, formatSalary } from "./format";
 import { EMPLOYMENT_TYPE_LABELS, type Opportunity } from "./types";
 
-/** One opportunity in a list. `actions` is for controls that belong to the list's owner. */
+/**
+ * One opportunity in a list. `actions` is for controls that belong to the list's owner;
+ * `children` go under the card, for whatever that list adds about each opportunity.
+ */
 export function OpportunityCard({
   opportunity,
   badge,
   actions,
+  children,
 }: {
   opportunity: Opportunity;
   badge?: ReactNode;
   actions?: ReactNode;
+  children?: ReactNode;
 }) {
   const { job } = opportunity;
   const owner = opportunity.organization?.name ?? opportunity.posted_by?.display_name;
@@ -50,6 +55,7 @@ export function OpportunityCard({
           ))}
         </ul>
       )}
+      {children}
     </li>
   );
 }

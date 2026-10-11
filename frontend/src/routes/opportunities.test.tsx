@@ -53,14 +53,21 @@ function opportunity(overrides: Partial<OpportunityDetail> = {}): OpportunityDet
     posted_by: null,
     skills: [python],
     job,
-    viewer: { can_manage: false, editable_fields: [] },
+    viewer: { can_manage: false, editable_fields: [], is_saved: false },
     ...overrides,
   };
 }
 
 const asManager = (overrides: Partial<OpportunityDetail> = {}) =>
-  opportunity({ viewer: { can_manage: true, editable_fields: null }, ...overrides });
-const PUBLISHED_EDITABLE = { can_manage: true, editable_fields: ["deadline", "description"] };
+  opportunity({
+    viewer: { can_manage: true, editable_fields: null, is_saved: false },
+    ...overrides,
+  });
+const PUBLISHED_EDITABLE = {
+  can_manage: true,
+  editable_fields: ["deadline", "description"],
+  is_saved: false,
+};
 
 beforeEach(() => vi.spyOn(window, "confirm").mockReturnValue(true));
 afterEach(() => vi.unstubAllGlobals());
@@ -174,7 +181,12 @@ describe("managing a job", () => {
   it("offers only archiving once the job is closed, and no editing", async () => {
     const api = mockApi({
       [`GET ${JOB}`]: () =>
-        json(opportunity({ status: "CLOSED", viewer: { can_manage: true, editable_fields: [] } })),
+        json(
+          opportunity({
+            status: "CLOSED",
+            viewer: { can_manage: true, editable_fields: [], is_saved: false },
+          }),
+        ),
       [`POST ${JOB}archive/`]: () => json(opportunity({ status: "ARCHIVED" })),
     });
     renderApp("/opportunities/opp-1", makeSession());
@@ -382,7 +394,12 @@ describe("editing a job", () => {
   it("refuses to open the form for a closed job or for someone who cannot manage it", async () => {
     mockApi({
       [`GET ${JOB}`]: () =>
-        json(opportunity({ status: "CLOSED", viewer: { can_manage: true, editable_fields: [] } })),
+        json(
+          opportunity({
+            status: "CLOSED",
+            viewer: { can_manage: true, editable_fields: [], is_saved: false },
+          }),
+        ),
     });
     renderApp("/opportunities/opp-1/edit", makeSession());
 

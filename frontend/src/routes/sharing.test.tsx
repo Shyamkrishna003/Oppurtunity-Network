@@ -59,7 +59,7 @@ function managedJob(overrides: Partial<OpportunityDetail> = {}): OpportunityDeta
     ...opportunity(),
     moderation_status: "VISIBLE",
     communities: [],
-    viewer: { can_manage: true, editable_fields: ["deadline", "description"] },
+    viewer: { can_manage: true, editable_fields: ["deadline", "description"], is_saved: false },
     ...overrides,
   };
 }
@@ -179,7 +179,7 @@ describe("sharing a job with communities", () => {
           managedJob({
             status: "DRAFT",
             published_at: null,
-            viewer: { can_manage: true, editable_fields: null },
+            viewer: { can_manage: true, editable_fields: null, is_saved: false },
           }),
         ),
     });
@@ -196,7 +196,7 @@ describe("sharing a job with communities", () => {
         json(
           managedJob({
             communities: [ref("com-1", "Kochi Developers"), ref("com-2", "React India")],
-            viewer: { can_manage: false, editable_fields: [] },
+            viewer: { can_manage: false, editable_fields: [], is_saved: false },
           }),
         ),
     });
