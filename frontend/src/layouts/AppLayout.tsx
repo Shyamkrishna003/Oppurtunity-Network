@@ -87,6 +87,10 @@ function AccountMenu({ me }: { me: Me }) {
           <Icon name="handshake" />
           Connections
         </NavLink>
+        <NavLink to="/referrals">
+          <Icon name="referral" />
+          Referrals
+        </NavLink>
         <NavLink to="/my/opportunities">
           <Icon name="megaphone" />
           My opportunities

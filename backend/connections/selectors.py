@@ -31,6 +31,16 @@ def are_connected(first: User, second: User) -> bool:
     return between(first.pk, second.pk).filter(status=S.ACCEPTED).exists()
 
 
+def connections_of(user: User) -> QuerySet[User]:
+    """The people the user is connected to. Only ever for the user's own purposes (choosing
+    whom to ask for a referral): never a list to show anybody else."""
+    accepted = Connection.objects.filter(status=S.ACCEPTED)
+    return User.objects.filter(
+        Q(pk__in=accepted.filter(user_low=user).values("user_high"))
+        | Q(pk__in=accepted.filter(user_high=user).values("user_low"))
+    )
+
+
 def _involving(user: User) -> Q:
     return Q(user_low=user) | Q(user_high=user)
 

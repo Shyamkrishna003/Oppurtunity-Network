@@ -1,5 +1,6 @@
 import type { OpportunityStatus } from "../opportunities/types";
 import type { Person } from "../organizations/types";
+import type { ApplicationReferral } from "../referrals/types";
 
 export type ApplicationStatus =
   | "APPLIED"
@@ -67,6 +68,8 @@ export interface ApplicationDetail extends Application {
   /** The applicant's headline as it was when they applied. */
   headline: string;
   applicant: Person;
+  /** Who referred the applicant, for the people deciding. Always empty for the applicant. */
+  referrals: ApplicationReferral[];
   history: ApplicationStep[];
   viewer: {
     is_applicant: boolean;
@@ -86,6 +89,7 @@ export interface PipelineApplication {
   status_changed_at: string;
   headline: string;
   applicant: Person;
+  referrals: ApplicationReferral[];
   next_statuses: ApplicationStatus[];
 }
 

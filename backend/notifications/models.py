@@ -24,6 +24,13 @@ class NotificationType(models.TextChoices):
     APPLICATION_REJECTED = "APPLICATION_REJECTED", "Your application was not selected"
     CONNECTION_REQUESTED = "CONNECTION_REQUESTED", "Someone asked to connect"
     CONNECTION_ACCEPTED = "CONNECTION_ACCEPTED", "Connection request accepted"
+    REFERRAL_REQUESTED = "REFERRAL_REQUESTED", "Someone asked you for a referral"
+    REFERRAL_ACCEPTED = "REFERRAL_ACCEPTED", "Referral request accepted"
+    REFERRAL_DECLINED = "REFERRAL_DECLINED", "Referral request declined"
+    REFERRAL_EXPIRED = "REFERRAL_EXPIRED", "Referral request expired"
+    REFERRAL_REFERRED = "REFERRAL_REFERRED", "You were referred"
+    REFERRAL_OUTCOME = "REFERRAL_OUTCOME", "News about someone you referred"
+    REFERRAL_CLOSED = "REFERRAL_CLOSED", "Referral closed"
 
 
 class Category(models.TextChoices):
@@ -36,6 +43,7 @@ class Category(models.TextChoices):
     POSTINGS = "POSTINGS", "My opportunities"
     APPLICATIONS = "APPLICATIONS", "My applications"
     CONNECTIONS = "CONNECTIONS", "Connections"
+    REFERRALS = "REFERRALS", "Referrals"
 
 
 class Channel(models.TextChoices):

@@ -136,6 +136,33 @@ export function ApplicationPage() {
         <Actions application={data} />
       </section>
 
+      {data.referrals.length > 0 && (
+        <section className="card" aria-labelledby="referrals-heading">
+          <h2 id="referrals-heading">Referred by</h2>
+          <ul className="entry-list">
+            {data.referrals.map((referral) => (
+              <li key={referral.id}>
+                <Link to={`/users/${referral.referrer.id}`} className="person">
+                  <Avatar
+                    name={referral.referrer.display_name}
+                    url={referral.referrer.avatar_url}
+                    size={36}
+                  />
+                  <span>
+                    <strong>{referral.referrer.display_name}</strong>
+                    {referral.referrer.headline && (
+                      <span className="muted"> · {referral.referrer.headline}</span>
+                    )}
+                  </span>
+                </Link>
+                <p className="prose">{referral.endorsement_note}</p>
+              </li>
+            ))}
+          </ul>
+          <p className="muted">The applicant does not see what a referrer wrote about them.</p>
+        </section>
+      )}
+
       {viewer.can_manage && (
         <section className="card" aria-labelledby="decide-heading">
           <h2 id="decide-heading">Decide</h2>

@@ -87,7 +87,11 @@ def list_for_job(opportunity: Opportunity, status: str = "") -> QuerySet[Applica
     applications = Application.objects.filter(opportunity=opportunity)
     if status:
         applications = applications.filter(status=status)
-    return applications.select_related("applicant__profile")
+    # A referral is attached to an application only once it has been made, so every one
+    # found here is for the managers to see.
+    return applications.select_related("applicant__profile").prefetch_related(
+        "referrals__referrer__profile"
+    )
 
 
 def stage_counts(opportunity: Opportunity) -> dict[str, int]:

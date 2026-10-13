@@ -94,6 +94,9 @@ class OpportunityViewerSerializer(serializers.Serializer[Any]):
     # Jobs only. ``application`` is the caller's own, if they ever applied to this job.
     can_apply = serializers.BooleanField()
     application = ViewerApplicationSerializer(allow_null=True)
+    # An organization's job that is applied to here, and still open. It does not say
+    # whether the caller knows anyone at the organization.
+    can_request_referral = serializers.BooleanField()
 
 
 class OpportunitySerializer(serializers.ModelSerializer[Opportunity]):
@@ -166,6 +169,7 @@ class OpportunityDetailSerializer(OpportunitySerializer):
             "application": ViewerApplicationSerializer(self.context.get("application")).data
             if self.context.get("application")
             else None,
+            "can_request_referral": self.context.get("can_request_referral", False),
         }
 
 

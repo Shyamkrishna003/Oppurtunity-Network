@@ -23,6 +23,7 @@ import {
   type OpportunityDetail,
 } from "../features/opportunities/types";
 import { EXPERIENCE_LEVELS, formatLocation, WORK_MODES } from "../features/profile/labels";
+import { ReferralPanel } from "../features/referrals/ReferralPanel";
 import { errorMessage } from "../services/formErrors";
 import { ApiError } from "../services/http";
 
@@ -315,6 +316,7 @@ export function OpportunityPage() {
       </section>
 
       <ApplyPanel opportunity={data} />
+      <ReferralPanel opportunity={data} />
 
       {open && job.application_method === "EXTERNAL" && (
         <section className="card" aria-labelledby="apply-heading">

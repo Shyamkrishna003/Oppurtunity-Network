@@ -26,6 +26,7 @@ from notifications.services import notify, notify_each
 from opportunities import selectors as opportunities
 from opportunities.models import Opportunity, OpportunityType
 from realtime.tasks import publish_event
+from referrals import services as referrals
 from users.models import User
 
 S = ApplicationStatus
@@ -121,6 +122,9 @@ def apply(
                 actor=applicant,
                 payload=_about(application, opportunity, applicant),
             )
+            # Anyone who already referred the applicant for this job now has an
+            # application to follow.
+            referrals.sync_from_application(application)
     except IntegrityError:
         # The same person, twice at once: the unique constraint let one through.
         storage.delete(key)
@@ -166,6 +170,7 @@ def _save_move(
         organization_id=application.opportunity.organization_id,
         metadata={"from": previous, "to": application.status},
     )
+    referrals.sync_from_application(application)
 
 
 def transition(

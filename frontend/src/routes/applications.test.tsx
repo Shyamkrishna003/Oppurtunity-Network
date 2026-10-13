@@ -98,6 +98,7 @@ function application(overrides: Partial<ApplicationDetail> = {}): ApplicationDet
     cover_note: "I have run Django in production.",
     headline: "Python developer",
     applicant: { id: "u-1", display_name: "Ada Lovelace", headline: "", avatar_url: null },
+    referrals: [],
     history: [step("", "APPLIED", "2026-10-10T09:00:00Z")],
     viewer: viewer(),
     ...overrides,

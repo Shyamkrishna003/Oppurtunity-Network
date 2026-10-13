@@ -41,6 +41,7 @@ DEFAULTS: dict[Category, tuple[bool, bool]] = {
     Category.POSTINGS: (True, True),
     Category.APPLICATIONS: (True, True),
     Category.CONNECTIONS: (True, True),
+    Category.REFERRALS: (True, True),
 }
 
 DESCRIPTIONS: dict[Category, str] = {
@@ -52,6 +53,9 @@ DESCRIPTIONS: dict[Category, str] = {
     Category.POSTINGS: "What communities decide about your opportunities, and when one expires.",
     Category.APPLICATIONS: "When a job you applied to moves your application on, or decides.",
     Category.CONNECTIONS: "When someone asks to connect with you, or accepts your request.",
+    Category.REFERRALS: (
+        "When a connection asks you to refer them, answers your request, or a referral moves on."
+    ),
 }
 
 
@@ -100,6 +104,21 @@ def _share_rejected(notification: Notification) -> Rendered:
         body=f"It will not be shown there.{reason} You can change it and offer it again.",
         url=_opportunity(p),
     )
+
+
+def _referral(payload: Payload) -> str:
+    return f"/referrals/{payload['referral_id']}"
+
+
+def _referral_outcome(notification: Notification) -> Rendered:
+    p = notification.payload
+    if p["status"] == "JOINED":
+        title = f"{p['requester_name']} got the job: “{p['opportunity_title']}”"
+        body = "The person you referred was hired. Thank you for vouching for them."
+    else:
+        title = f"{p['requester_name']} applied to “{p['opportunity_title']}”"
+        body = "Their application now carries your referral."
+    return Rendered(title=title, body=body, url=_referral(p))
 
 
 def _application_advanced(notification: Notification) -> Rendered:
@@ -259,6 +278,61 @@ SPECS: dict[NotificationType, Spec] = {
             "{person_name} accepted your request to connect",
             "You are now connected.",
             lambda p: "/connections",
+        ),
+    ),
+    T.REFERRAL_REQUESTED: Spec(
+        Category.REFERRALS,
+        True,
+        _simple(
+            "{requester_name} asked you for a referral",
+            "It is for “{opportunity_title}”. Open the request to accept or decline.",
+            _referral,
+        ),
+    ),
+    T.REFERRAL_ACCEPTED: Spec(
+        Category.REFERRALS,
+        True,
+        _simple(
+            "{referrer_name} agreed to refer you",
+            "It is for “{opportunity_title}”. You will be told when the referral is made.",
+            _referral,
+        ),
+    ),
+    T.REFERRAL_DECLINED: Spec(
+        Category.REFERRALS,
+        True,
+        _simple(
+            "{referrer_name} declined your referral request",
+            "It was for “{opportunity_title}”. You can still apply, or ask someone else.",
+            _referral,
+        ),
+    ),
+    T.REFERRAL_EXPIRED: Spec(
+        Category.REFERRALS,
+        True,
+        _simple(
+            "Your referral request to {referrer_name} expired",
+            "It was for “{opportunity_title}” and was not answered in time.",
+            _referral,
+        ),
+    ),
+    T.REFERRAL_REFERRED: Spec(
+        Category.REFERRALS,
+        True,
+        _simple(
+            "{referrer_name} referred you for “{opportunity_title}”",
+            "The people hiring can see it. If you have not applied yet, apply now.",
+            _referral,
+        ),
+    ),
+    T.REFERRAL_OUTCOME: Spec(Category.REFERRALS, True, _referral_outcome),
+    T.REFERRAL_CLOSED: Spec(
+        Category.REFERRALS,
+        True,
+        _simple(
+            "The referral for “{opportunity_title}” was closed",
+            "Between {requester_name} and {referrer_name}. Nothing more will happen with it.",
+            _referral,
         ),
     ),
 }
