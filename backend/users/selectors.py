@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.http import Http404
 
 from communities.selectors import share_a_community
+from connections.selectors import are_connected
 from taxonomy.models import Skill
 from users import policies
 from users.models import ProfileVisibility, SkillKind, User, UserBlock, UserSkill
@@ -25,15 +26,22 @@ def get_visible_user(viewer: User, user_id: UUID) -> User:
         raise Http404
     if user.pk != viewer.pk and is_blocked_either_way(viewer, user):
         raise Http404
-    # Connections do not exist yet, so "connections only" profiles are visible to their
-    # owner and platform staff alone for now.
+    # Each relationship is only looked up when the profile's visibility depends on it.
+    visibility = user.profile.visibility
+    is_other = user.pk != viewer.pk
+    is_connection = (
+        visibility in (ProfileVisibility.CONNECTIONS, ProfileVisibility.COMMUNITY)
+        and is_other
+        and are_connected(viewer, user)
+    )
     shares_community = (
-        user.profile.visibility == ProfileVisibility.COMMUNITY
-        and user.pk != viewer.pk
+        visibility == ProfileVisibility.COMMUNITY
+        and is_other
+        and not is_connection
         and share_a_community(viewer, user)
     )
     if not policies.can_view_profile(
-        viewer, user.profile, is_connection=False, shares_community=shares_community
+        viewer, user.profile, is_connection=is_connection, shares_community=shares_community
     ):
         raise Http404
     return user

@@ -12,6 +12,7 @@ from django.db import transaction
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from common.errors import BusinessRuleViolation
+from connections import services as connections
 from taxonomy.models import Skill
 from users.models import SkillKind, User, UserBlock, UserProfile, UserSkill
 
@@ -115,8 +116,11 @@ def remove_avatar(profile: UserProfile) -> UserProfile:
 def block_user(*, blocker: User, blocked: User) -> None:
     if blocker.pk == blocked.pk:
         raise BusinessRuleViolation("You cannot block yourself.", code="cannot_block_self")
-    # Idempotent; the unique constraint settles concurrent duplicates.
-    UserBlock.objects.get_or_create(blocker=blocker, blocked=blocked)
+    with transaction.atomic():
+        # Idempotent; the unique constraint settles concurrent duplicates.
+        UserBlock.objects.get_or_create(blocker=blocker, blocked=blocked)
+        # A block ends the connection, and any request waiting between the two.
+        connections.sever(blocker, blocked)
 
 
 def unblock_user(*, blocker: User, blocked_id: UUID) -> None:

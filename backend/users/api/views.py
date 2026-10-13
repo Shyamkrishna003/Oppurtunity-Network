@@ -15,6 +15,8 @@ from rest_framework.views import APIView
 
 from common.errors import BusinessRuleViolation
 from common.throttles import ScopedThrottle
+from connections import selectors as connections
+from connections.policies import state_for
 from users import policies, selectors
 from users.api import serializers
 from users.api.utils import current_user
@@ -296,9 +298,13 @@ class UserDetailView(APIView):
         user = selectors.get_visible_user(viewer, user_id)
         profile = user.profile
         show_history = policies.can_view_history(viewer, profile)
+        is_self = user.pk == viewer.pk
+        connection = None if is_self else connections.with_user(viewer, user)
         payload = {
             "id": user.pk,
-            "is_self": user.pk == viewer.pk,
+            "is_self": is_self,
+            "connection": connection
+            and {"id": connection.pk, "state": state_for(viewer.pk, connection)},
             "display_name": profile.display_name,
             "headline": profile.headline,
             "bio": profile.bio,

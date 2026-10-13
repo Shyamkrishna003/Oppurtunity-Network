@@ -202,7 +202,7 @@ def test_profile_view_uses_a_fixed_number_of_queries(api_as, django_assert_max_n
         )
     client = api_as(UserFactory())
 
-    with django_assert_max_num_queries(6):
+    with django_assert_max_num_queries(7):
         assert client.get(f"/api/v1/users/{owner.pk}/").status_code == 200
 
 

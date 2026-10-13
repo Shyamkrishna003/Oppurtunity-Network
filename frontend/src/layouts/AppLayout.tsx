@@ -83,6 +83,10 @@ function AccountMenu({ me }: { me: Me }) {
           {name}
         </NavLink>
         <div className="menu-divider" />
+        <NavLink to="/connections">
+          <Icon name="handshake" />
+          Connections
+        </NavLink>
         <NavLink to="/my/opportunities">
           <Icon name="megaphone" />
           My opportunities

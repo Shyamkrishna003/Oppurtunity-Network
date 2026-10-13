@@ -356,6 +356,7 @@ describe("inviting from a profile", () => {
   const profile = {
     id: "u-9",
     is_self: false,
+    connection: null,
     display_name: "Grace Hopper",
     headline: "",
     bio: "",

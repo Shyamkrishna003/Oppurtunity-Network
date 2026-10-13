@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useAppDispatch } from "../../app/store";
 import { applicationKeys } from "../applications/api";
 import { useSessionStatus } from "../auth/api";
+import { connectionKeys } from "../connections/api";
 import { notificationKeys } from "../notifications/api";
 import { streamStatusChanged } from "./realtimeSlice";
 import { StreamConnection, type StreamEvent } from "./socket";
@@ -28,6 +29,12 @@ function apply(queryClient: QueryClient, event: StreamEvent): void {
       // page that shows its status.
       void queryClient.invalidateQueries({ queryKey: applicationKeys.all });
       void queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      break;
+    case "connection.updated":
+      // Someone asked the viewer, accepted them, took a request back or left: the lists,
+      // and any open profile, whose connect button depends on it.
+      void queryClient.invalidateQueries({ queryKey: connectionKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["users"] });
       break;
     default:
       // An event type from a newer server; ignoring it is always safe.
