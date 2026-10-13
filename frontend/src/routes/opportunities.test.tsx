@@ -53,6 +53,7 @@ function opportunity(overrides: Partial<OpportunityDetail> = {}): OpportunityDet
     posted_by: null,
     skills: [python],
     job,
+    event: null,
     viewer: makeViewer(),
     ...overrides,
   };

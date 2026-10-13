@@ -38,6 +38,7 @@ function opportunity(overrides: Partial<Opportunity> = {}): Opportunity {
     organization: null,
     posted_by: { id: "u-1", display_name: "Ada Lovelace", headline: "", avatar_url: null },
     skills: [{ id: "s-py", name: "Python", slug: "python" }],
+    event: null,
     job: {
       department: "",
       employment_type: "FULL_TIME",

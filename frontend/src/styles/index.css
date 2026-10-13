@@ -907,6 +907,14 @@ input[type="file"]::file-selector-button {
   color: var(--error);
 }
 
+/* Marks an event among jobs in a mixed list. */
+.badge-event {
+  margin-left: 0.4rem;
+  border-color: var(--edge);
+  background: var(--sky);
+  color: var(--on-bright);
+}
+
 .splash {
   display: flex;
   flex-direction: column;

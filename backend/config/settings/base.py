@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "communities",
     "opportunities",
     "jobs",
+    "events",
     "applications",
     "connections",
     "referrals",
@@ -172,6 +173,11 @@ CELERY_BEAT_SCHEDULE = {
     "expire-opportunities": {
         "task": "opportunities.expire_due",
         "schedule": timedelta(minutes=5),
+        "options": {"queue": "scheduled"},
+    },
+    "advance-event-states": {
+        "task": "events.advance_states",
+        "schedule": timedelta(minutes=1),
         "options": {"queue": "scheduled"},
     },
     "sweep-referrals": {

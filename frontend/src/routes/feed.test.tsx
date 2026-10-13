@@ -33,6 +33,7 @@ function opportunity(id: string, title: string, overrides: Partial<Opportunity> 
     organization: { id: "org-1", name: "Example Labs", slug: "x", verification_status: "VERIFIED" },
     posted_by: null,
     skills: [python],
+    event: null,
     job: {
       department: "",
       employment_type: "FULL_TIME",

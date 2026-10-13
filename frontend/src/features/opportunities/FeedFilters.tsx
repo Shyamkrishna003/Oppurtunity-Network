@@ -123,6 +123,7 @@ export function FeedFilters({ params, onChange, onClear, signedIn }: FeedFilters
         </div>
 
         <div className="field-row">
+          {select("type", "Type", { JOB: "Jobs", EVENT: "Events" }, "Jobs and events")}
           {select("work_mode", "Work mode", WORK_MODES, "Any")}
           {select("experience_level", "Experience", EXPERIENCE_LEVELS, "Any")}
           {select("employment_type", "Employment type", EMPLOYMENT_TYPE_LABELS, "Any")}

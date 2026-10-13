@@ -27,7 +27,9 @@ Phases 0 to 6 are done. What works today:
 
 - Referrals: on an organization's job, ask one of your own connections who works there to refer you. They accept or decline, then make the referral with a note for the people hiring, who see it next to your application. From then on the referral follows the application to its outcome (interview, offer, joined). Only your own connections who show their membership publicly and take referral requests are offered, and every refusal reads the same, so asking cannot reveal who works where. Unanswered requests expire after 14 days.
 
-A user can belong to any number of organizations and communities, with a different role in each. Events (Phase 7) are next.
+- Events (Phase 7, in progress): host an event personally or for an organization, in person, online or both, with its times kept in the event's own time zone. Publish, edit within limits, cancel; events appear in the feed next to jobs and can be filtered. Registration opens and closes and events complete by themselves as their times pass. The link to join online is only shown to the people running the event. Registering, the waitlist and check-in are next.
+
+A user can belong to any number of organizations and communities, with a different role in each.
 
 ## Stack
 

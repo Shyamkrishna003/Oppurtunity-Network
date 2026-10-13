@@ -5,7 +5,12 @@ import type { Person } from "../organizations/types";
 export type OpportunityType = "JOB" | "EVENT";
 export type OpportunityStatus = "DRAFT" | "PUBLISHED" | "CLOSED" | "EXPIRED" | "ARCHIVED";
 export type OpportunityVisibility = "PUBLIC" | "COMMUNITY" | "ORGANIZATION";
-export type CloseReason = "FILLED" | "CANCELLED" | "OTHER";
+/** `COMPLETED` is only ever set by the server, when an event has taken place. */
+export type CloseReason = "FILLED" | "CANCELLED" | "COMPLETED" | "OTHER";
+export type EventStatus =
+  "SCHEDULED" | "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "COMPLETED" | "CANCELLED";
+export type EventFormat = "IN_PERSON" | "ONLINE" | "HYBRID";
+export type AttendeeVisibility = "PUBLIC" | "ATTENDEES" | "HIDDEN";
 export type EmploymentType = "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERNSHIP" | "TEMPORARY";
 export type SalaryPeriod = "YEAR" | "MONTH" | "HOUR";
 export type ApplicationMethod = "INTERNAL" | "EXTERNAL";
@@ -38,11 +43,58 @@ export const SALARY_PERIOD_LABELS: Record<SalaryPeriod, string> = {
   HOUR: "per hour",
 };
 
-export const CLOSE_REASON_LABELS: Record<CloseReason, string> = {
+/** The reasons a person can choose when closing a job. */
+export const CLOSE_REASON_LABELS: Record<Exclude<CloseReason, "COMPLETED">, string> = {
   FILLED: "The position was filled",
   CANCELLED: "The opening was cancelled",
   OTHER: "Another reason",
 };
+
+export const TYPE_LABELS: Record<OpportunityType, string> = { JOB: "Job", EVENT: "Event" };
+
+export const EVENT_FORMAT_LABELS: Record<EventFormat, string> = {
+  IN_PERSON: "In person",
+  ONLINE: "Online",
+  HYBRID: "In person and online",
+};
+
+export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
+  SCHEDULED: "Registration opens soon",
+  REGISTRATION_OPEN: "Registration open",
+  REGISTRATION_CLOSED: "Registration closed",
+  COMPLETED: "This event has taken place",
+  CANCELLED: "Cancelled",
+};
+
+export const ATTENDEE_VISIBILITY_LABELS: Record<AttendeeVisibility, string> = {
+  PUBLIC: "Anyone who can see the event",
+  ATTENDEES: "People who are going",
+  HIDDEN: "Only the organizers",
+};
+
+/** The fields of an event that its organizer edits. */
+export interface EventInput {
+  format: EventFormat | "";
+  start_at: string | null;
+  end_at: string | null;
+  /** An IANA name such as "Asia/Kolkata": the place the times are meant in. */
+  timezone: string;
+  venue: string;
+  online_url: string;
+  /** Null means there is no limit. */
+  capacity: number | null;
+  /** Null means registration opens as soon as the event is published. */
+  registration_opens_at: string | null;
+  attendee_visibility: AttendeeVisibility;
+}
+
+export interface EventDetail extends EventInput {
+  /** Empty until the event is published. */
+  event_status: EventStatus | "";
+  confirmed_count: number;
+  /** `online_url` itself is only sent to the people who run the event. */
+  has_online_url: boolean;
+}
 
 export interface JobDetail {
   department: string;
@@ -68,7 +120,9 @@ export interface OpportunityInput {
   city: string;
   deadline: string | null;
   skill_ids: string[];
-  job: JobDetail;
+  /** Whichever matches the opportunity's type; the other is left out. */
+  job?: JobDetail;
+  event?: EventInput;
 }
 
 export interface NewOpportunityInput extends OpportunityInput {
@@ -76,9 +130,12 @@ export interface NewOpportunityInput extends OpportunityInput {
   organization_id: string | null;
 }
 
-export interface Opportunity extends Omit<OpportunityInput, "skill_ids"> {
+export interface Opportunity extends Omit<OpportunityInput, "skill_ids" | "job" | "event"> {
   id: string;
   type: OpportunityType;
+  /** Exactly one of these is set, according to `type`. */
+  job: JobDetail | null;
+  event: EventDetail | null;
   status: OpportunityStatus;
   published_at: string | null;
   closed_at: string | null;

@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { Notice } from "../components/Notice";
 import { Splash } from "../components/Splash";
 import { ApplyPanel } from "../features/applications/ApplyPanel";
+import { formatEventTime } from "../features/events/time";
 import {
   useArchiveOpportunity,
   useCloseOpportunity,
@@ -17,6 +18,8 @@ import { SharePanel } from "../features/opportunities/SharePanel";
 import {
   CLOSE_REASON_LABELS,
   EMPLOYMENT_TYPE_LABELS,
+  EVENT_FORMAT_LABELS,
+  EVENT_STATUS_LABELS,
   STATUS_LABELS,
   VISIBILITY_LABELS,
   type CloseReason,
@@ -35,6 +38,12 @@ const FIELD_LABELS: Record<string, string> = {
   city: "City",
   deadline: "Apply-by date",
   skill_ids: "Skills needed",
+  "event.format": "Format",
+  "event.start_at": "Starts",
+  "event.end_at": "Ends",
+  "event.timezone": "Time zone",
+  "event.venue": "Venue",
+  "event.registration_opens_at": "Registration opens",
   "job.employment_type": "Employment type",
   "job.experience_level": "Experience level",
   "job.salary_currency": "Salary currency",
@@ -50,6 +59,8 @@ function ManagerPanel({ opportunity }: { opportunity: OpportunityDetail }) {
   const [reason, setReason] = useState<CloseReason>("FILLED");
   const busy = publish.isPending || close.isPending || archive.isPending || remove.isPending;
   const { status } = opportunity;
+  const isEvent = opportunity.type === "EVENT";
+  const kind = isEvent ? "event" : "job";
   const editable = opportunity.viewer.editable_fields;
   const canEdit = editable === null || editable.length > 0;
 
@@ -87,13 +98,13 @@ function ManagerPanel({ opportunity }: { opportunity: OpportunityDetail }) {
       )}
       {status === "PUBLISHED" && opportunity.visibility === "COMMUNITY" && (
         <p className="muted">
-          This job is limited to communities. It becomes visible to a community&apos;s members once
-          it has been shared there and approved.
+          This {kind} is limited to communities. It becomes visible to a community&apos;s members
+          once it has been shared there and approved.
         </p>
       )}
 
       <div className="button-row">
-        {status !== "DRAFT" && opportunity.job.application_method === "INTERNAL" && (
+        {status !== "DRAFT" && opportunity.job?.application_method === "INTERNAL" && (
           <Link to={`/opportunities/${opportunity.id}/applications`} className="button">
             View applications
           </Link>
@@ -133,7 +144,9 @@ function ManagerPanel({ opportunity }: { opportunity: OpportunityDetail }) {
             type="button"
             disabled={busy}
             onClick={() => {
-              if (window.confirm("Archive this job? It will disappear from every public page.")) {
+              if (
+                window.confirm(`Archive this ${kind}? It will disappear from every public page.`)
+              ) {
                 archive.mutate();
               }
             }}
@@ -141,9 +154,26 @@ function ManagerPanel({ opportunity }: { opportunity: OpportunityDetail }) {
             Archive
           </button>
         )}
+        {status === "PUBLISHED" && isEvent && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              if (
+                window.confirm(
+                  "Cancel this event? It stays visible, marked as cancelled. This cannot be undone.",
+                )
+              ) {
+                close.mutate("CANCELLED");
+              }
+            }}
+          >
+            {close.isPending ? "Cancelling…" : "Cancel event"}
+          </button>
+        )}
       </div>
 
-      {status === "PUBLISHED" && (
+      {status === "PUBLISHED" && !isEvent && (
         <form
           className="search-form"
           onSubmit={(event) => {
@@ -200,15 +230,21 @@ export function OpportunityPage() {
   }
 
   const data = opportunity.data;
-  const { job } = data;
+  const { job, event } = data;
+  const kind = event ? "event" : "job";
   const location = formatLocation(data);
-  const salary = formatSalary(job);
-  const facts = [
-    job.employment_type && EMPLOYMENT_TYPE_LABELS[job.employment_type],
-    job.experience_level && EXPERIENCE_LEVELS[job.experience_level],
-    data.work_mode && WORK_MODES[data.work_mode],
-    location,
-  ].filter(Boolean);
+  const salary = job ? formatSalary(job) : "";
+  const place = event ? [event.venue, location].filter(Boolean).join(", ") : location;
+  const facts = (
+    event
+      ? [formatEventTime(event), event.format && EVENT_FORMAT_LABELS[event.format], place]
+      : [
+          job?.employment_type && EMPLOYMENT_TYPE_LABELS[job.employment_type],
+          job?.experience_level && EXPERIENCE_LEVELS[job.experience_level],
+          data.work_mode && WORK_MODES[data.work_mode],
+          location,
+        ]
+  ).filter(Boolean);
   const open = data.status === "PUBLISHED";
 
   return (
@@ -236,8 +272,14 @@ export function OpportunityPage() {
       </p>
       {facts.length > 0 && <p className="muted">{facts.join(" · ")}</p>}
 
-      {data.status === "CLOSED" && (
+      {data.status === "CLOSED" && !event && (
         <Notice kind="error">This job is closed and no longer takes applications.</Notice>
+      )}
+      {event && event.event_status === "CANCELLED" && (
+        <Notice kind="error">This event has been cancelled.</Notice>
+      )}
+      {event && event.event_status === "COMPLETED" && (
+        <Notice kind="ok">This event has taken place.</Notice>
       )}
       {data.status === "EXPIRED" && (
         <Notice kind="error">The deadline for this job has passed.</Notice>
@@ -258,7 +300,7 @@ export function OpportunityPage() {
       )}
 
       <section className="card" aria-labelledby="about-heading">
-        <h2 id="about-heading">About the job</h2>
+        <h2 id="about-heading">About the {kind}</h2>
         {data.description ? (
           <p className="prose">{data.description}</p>
         ) : (
@@ -271,17 +313,62 @@ export function OpportunityPage() {
               <dd>{salary}</dd>
             </>
           )}
-          {job.department && (
+          {job?.department && (
             <>
               <dt>Department</dt>
               <dd>{job.department}</dd>
             </>
           )}
-          <dt>Openings</dt>
-          <dd>{job.openings}</dd>
+          {job && (
+            <>
+              <dt>Openings</dt>
+              <dd>{job.openings}</dd>
+            </>
+          )}
+          {event && (
+            <>
+              <dt>When</dt>
+              <dd>{formatEventTime(event) || "Not set yet"}</dd>
+              {place && (
+                <>
+                  <dt>Where</dt>
+                  <dd>{place}</dd>
+                </>
+              )}
+              {event.format !== "" && event.format !== "IN_PERSON" && (
+                <>
+                  <dt>Online</dt>
+                  <dd>
+                    {event.online_url ? (
+                      // Sent only to the people running the event; a link they typed in.
+                      <a href={event.online_url} target="_blank" rel="noopener noreferrer">
+                        {event.online_url}
+                      </a>
+                    ) : event.has_online_url ? (
+                      "The link to join is shared with attendees."
+                    ) : (
+                      "The link to join has not been added yet."
+                    )}
+                  </dd>
+                </>
+              )}
+              <dt>Places</dt>
+              <dd>
+                {event.capacity === null
+                  ? "No limit"
+                  : `${String(event.confirmed_count)} of ${String(event.capacity)} taken`}
+              </dd>
+              {event.event_status !== "" && (
+                <>
+                  <dt>Registration</dt>
+                  <dd>{EVENT_STATUS_LABELS[event.event_status]}</dd>
+                </>
+              )}
+            </>
+          )}
           {data.deadline && (
             <>
-              <dt>Apply by</dt>
+              <dt>{event ? "Register by" : "Apply by"}</dt>
               <dd>{formatDate(data.deadline)}</dd>
             </>
           )}
@@ -318,7 +405,7 @@ export function OpportunityPage() {
       <ApplyPanel opportunity={data} />
       <ReferralPanel opportunity={data} />
 
-      {open && job.application_method === "EXTERNAL" && (
+      {open && job?.application_method === "EXTERNAL" && (
         <section className="card" aria-labelledby="apply-heading">
           <h2 id="apply-heading">How to apply</h2>
           <p>

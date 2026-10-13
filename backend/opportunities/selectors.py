@@ -85,9 +85,9 @@ def visible_to(viewer: Viewer) -> QuerySet[Opportunity]:
 
 def with_details(queryset: QuerySet[Opportunity]) -> QuerySet[Opportunity]:
     """Everything a serialized opportunity needs, in a fixed number of queries."""
-    return queryset.select_related("organization", "creator__profile", "job").prefetch_related(
-        "skills"
-    )
+    return queryset.select_related(
+        "organization", "creator__profile", "job", "event"
+    ).prefetch_related("skills")
 
 
 def get_opportunity(viewer: Viewer, opportunity_id: UUID) -> Opportunity:
@@ -154,6 +154,7 @@ def _share_details(queryset: QuerySet[OpportunityCommunity]) -> QuerySet[Opportu
         "opportunity__organization",
         "opportunity__creator__profile",
         "opportunity__job",
+        "opportunity__event",
         "submitted_by__profile",
     ).prefetch_related("opportunity__skills")
 
@@ -193,7 +194,10 @@ def list_saved(user: User) -> QuerySet[SavedOpportunity]:
     return (
         SavedOpportunity.objects.filter(user=user, opportunity__in=visible_to(user))
         .select_related(
-            "opportunity__organization", "opportunity__creator__profile", "opportunity__job"
+            "opportunity__organization",
+            "opportunity__creator__profile",
+            "opportunity__job",
+            "opportunity__event",
         )
         .prefetch_related("opportunity__skills")
     )

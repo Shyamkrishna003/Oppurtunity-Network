@@ -17,6 +17,8 @@ from rest_framework.exceptions import PermissionDenied
 from audit.services import record
 from common.choices import WorkMode
 from common.errors import BusinessRuleViolation, Conflict, FieldErrors
+from events import services as event_details
+from events.policies import WORK_MODE_FOR
 from jobs import services as job_details
 from notifications.models import NotificationType
 from notifications.services import notify
@@ -45,7 +47,7 @@ _LOCKED = "This cannot be changed after publishing."
 def lock_opportunity(opportunity_id: UUID) -> Opportunity:
     opportunity = (
         Opportunity.objects.select_for_update(of=("self",))
-        .select_related("organization", "job")
+        .select_related("organization", "job", "event")
         .filter(pk=opportunity_id)
         .first()
     )
@@ -59,6 +61,22 @@ def require_manager(user: User, opportunity: Opportunity) -> Manager:
     if not policies.can_manage(user, opportunity, membership):
         raise PermissionDenied()
     return Manager(user)
+
+
+def _is_event(opportunity: Opportunity) -> bool:
+    return opportunity.type == OpportunityType.EVENT
+
+
+def _detail_of(opportunity: Opportunity) -> Any:
+    """The type-specific row of an opportunity."""
+    return opportunity.event if _is_event(opportunity) else opportunity.job
+
+
+def _follow_format(fields: dict[str, Any], event: dict[str, Any]) -> None:
+    """An event's work mode is not chosen: it follows from the event's format."""
+    fields.pop("work_mode", None)
+    if "format" in event:
+        fields["work_mode"] = WORK_MODE_FOR.get(event["format"], "")
 
 
 def _require_active_organization(organization: Organization | None) -> None:
@@ -112,15 +130,19 @@ def create_opportunity(
     organization_id: UUID | None = None,
     skill_ids: Iterable[UUID] = (),
     job: dict[str, Any] | None = None,
+    event: dict[str, Any] | None = None,
     **fields: Any,
 ) -> Opportunity:
-    """Create a draft, personal or on behalf of an organization the creator posts for."""
+    """Create a draft, personal or on behalf of an organization the creator posts for.
+
+    ``job`` or ``event`` holds the fields of that type; the one matching ``type`` is used.
+    """
     if not creator.is_email_verified:
         raise PermissionDenied("Verify your email address to do this.", code="email_not_verified")
-    if type != OpportunityType.JOB:
-        raise BusinessRuleViolation(
-            "This type of opportunity is not available yet.", code="type_unavailable"
-        )
+    is_event = type == OpportunityType.EVENT
+    if is_event:
+        event = dict(event or {})
+        _follow_format(fields, event)
 
     organization = None
     if organization_id is not None:
@@ -135,7 +157,10 @@ def create_opportunity(
         opportunity = Opportunity.objects.create(
             creator=creator, organization=organization, type=type, **fields
         )
-        job_details.create_detail(opportunity, job or {})
+        if is_event:
+            event_details.create_detail(opportunity, event or {})
+        else:
+            job_details.create_detail(opportunity, job or {})
         _set_skills(opportunity, skill_ids)
         search.reindex(opportunity)
         record(
@@ -160,10 +185,12 @@ def update_opportunity(
     opportunity_id: UUID,
     changes: dict[str, Any],
     job_changes: dict[str, Any] | None = None,
+    event_changes: dict[str, Any] | None = None,
     skill_ids: Iterable[UUID] | None = None,
 ) -> Opportunity:
     """Edit an opportunity. A draft is fully editable; once published, only what cannot
     mislead the people already looking at it."""
+    changes = dict(changes)
     with transaction.atomic():
         opportunity = lock_opportunity(opportunity_id)
         require_manager(actor, opportunity)
@@ -172,8 +199,19 @@ def update_opportunity(
             raise Conflict(
                 "A closed opportunity can no longer be edited.", code="opportunity_not_editable"
             )
+        # From here on both types are handled alike: ``details`` is the module that knows
+        # this type's rules, and ``prefix`` is how its fields are named in errors.
+        details: Any
+        if _is_event(opportunity):
+            details, prefix = event_details, "event"
+            detail_changes = dict(event_changes or {})
+            _follow_format(changes, detail_changes)
+        else:
+            details, prefix = job_details, "job"
+            detail_changes = dict(job_changes or {})
+        detail = _detail_of(opportunity)
         changes = _differing(opportunity, changes)
-        job_changes = _differing(opportunity.job, job_changes or {})
+        detail_changes = _differing(detail, detail_changes)
         current_skills = set(opportunity.skills.values_list("pk", flat=True))
         skills_differ = skill_ids is not None and set(skill_ids) != current_skills
 
@@ -181,9 +219,9 @@ def update_opportunity(
             locked = [
                 *(field for field in changes if field not in allowed),
                 *(
-                    f"job.{field}"
-                    for field in job_changes
-                    if field not in job_details.EDITABLE_WHEN_PUBLISHED
+                    f"{prefix}.{field}"
+                    for field in detail_changes
+                    if field not in details.EDITABLE_WHEN_PUBLISHED
                 ),
                 *(["skill_ids"] if skills_differ else []),
             ]
@@ -207,10 +245,10 @@ def update_opportunity(
             setattr(opportunity, field, value)
         if changes:
             opportunity.save(update_fields=[*changes, "updated_at"])
-        job_details.update_detail(opportunity.job, job_changes)
+        details.update_detail(detail, detail_changes)
         if skills_differ and skill_ids is not None:
             _set_skills(opportunity, skill_ids)
-        if changes or job_changes or skills_differ:
+        if changes or detail_changes or skills_differ:
             search.reindex(opportunity)
             record(
                 action="opportunity.updated",
@@ -221,7 +259,7 @@ def update_opportunity(
                     "fields": sorted(
                         [
                             *changes,
-                            *(f"job.{field}" for field in job_changes),
+                            *(f"{prefix}.{field}" for field in detail_changes),
                             *(["skill_ids"] if skills_differ else []),
                         ]
                     ),
@@ -258,6 +296,12 @@ def _publication_errors(opportunity: Opportunity) -> FieldErrors:
     errors: FieldErrors = {}
     if not opportunity.description.strip():
         errors["description"] = ["Describe the opportunity."]
+    if opportunity.deadline is not None and opportunity.deadline <= timezone.now():
+        errors["deadline"] = ["The deadline must be in the future."]
+    if _is_event(opportunity):
+        # Where and when are the event's own business; skills are welcome but not required.
+        return {**errors, **event_details.publication_errors(opportunity.event, opportunity)}
+
     if not opportunity.work_mode:
         errors["work_mode"] = ["Choose remote, hybrid or on-site."]
     elif opportunity.work_mode != WorkMode.REMOTE:
@@ -265,8 +309,6 @@ def _publication_errors(opportunity: Opportunity) -> FieldErrors:
             errors["country_code"] = ["Give the country for a hybrid or on-site role."]
         if not opportunity.city:
             errors["city"] = ["Give the city for a hybrid or on-site role."]
-    if opportunity.deadline is not None and opportunity.deadline <= timezone.now():
-        errors["deadline"] = ["The deadline must be in the future."]
     if not opportunity.skills.exists():
         errors["skill_ids"] = ["Add at least one skill, so the right people can find this."]
     errors.update(job_details.publication_errors(opportunity.job))
@@ -289,6 +331,8 @@ def publish(*, actor: User, opportunity_id: UUID) -> Opportunity:
             )
         opportunity.published_at = timezone.now()
         opportunity.save(update_fields=["status", "published_at", "updated_at"])
+        if _is_event(opportunity):
+            event_details.publish(opportunity.event, opportunity.published_at)
         search.reindex(opportunity)
         record(
             action="opportunity.published",
@@ -300,10 +344,21 @@ def publish(*, actor: User, opportunity_id: UUID) -> Opportunity:
 
 
 def close(*, actor: User, opportunity_id: UUID, reason: CloseReason) -> Opportunity:
+    """Stop taking applications for a job, or call off an event.
+
+    An event closed by a person has been cancelled, whatever reason was sent: one that
+    simply takes place is completed by the system instead.
+    """
+    if reason == CloseReason.COMPLETED:
+        message = "Choose another reason: this one is set when an event has taken place."
+        raise BusinessRuleViolation(message, code="invalid_reason", errors={"reason": [message]})
     with transaction.atomic():
         opportunity = lock_opportunity(opportunity_id)
         manager = require_manager(actor, opportunity)
         if LIFECYCLE.apply(opportunity, S.CLOSED, actor=manager):
+            if _is_event(opportunity):
+                event_details.cancel(opportunity.event, manager)
+                reason = CloseReason.CANCELLED
             opportunity.closed_at = timezone.now()
             opportunity.close_reason = reason
             opportunity.save(update_fields=["status", "closed_at", "close_reason", "updated_at"])
