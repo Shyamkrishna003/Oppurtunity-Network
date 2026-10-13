@@ -15,6 +15,7 @@ urlpatterns = [
     path("", include("applications.api.urls")),
     path("", include("connections.api.urls")),
     path("", include("referrals.api.urls")),
+    path("", include("messaging.api.urls")),
     path("", include("notifications.api.urls")),
     path("", include("realtime.api")),
     path("files/<str:token>/", storage.download, name="private-download"),

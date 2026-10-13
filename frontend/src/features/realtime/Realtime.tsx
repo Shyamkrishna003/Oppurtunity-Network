@@ -6,6 +6,7 @@ import { applicationKeys } from "../applications/api";
 import { eventKeys } from "../events/api";
 import { useSessionStatus } from "../auth/api";
 import { connectionKeys } from "../connections/api";
+import { messagingKeys } from "../messaging/api";
 import { notificationKeys } from "../notifications/api";
 import { referralKeys } from "../referrals/api";
 import { streamStatusChanged } from "./realtimeSlice";
@@ -25,6 +26,12 @@ function apply(queryClient: QueryClient, event: StreamEvent): void {
     case "notification.created":
     case "notification.read":
       refreshNotifications(queryClient);
+      break;
+    case "message.created":
+    case "conversation.read":
+      // A message arrived or was sent from another tab, or one side read the thread: the
+      // inbox, its badge, and the open conversation with its "seen" mark.
+      void queryClient.invalidateQueries({ queryKey: messagingKeys.all });
       break;
     case "application.updated":
       // One of the viewer's applications moved: its page, "my applications", and the job
@@ -71,6 +78,7 @@ export function Realtime() {
         if (status === "live") {
           // Whatever happened while we were not connected was never pushed.
           refreshNotifications(queryClient);
+          void queryClient.invalidateQueries({ queryKey: messagingKeys.all });
         }
       },
       onEvent: (event) => {

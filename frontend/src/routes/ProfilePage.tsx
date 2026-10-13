@@ -6,6 +6,7 @@ import { Splash } from "../components/Splash";
 import type { Skill } from "../features/auth/types";
 import { InviteToCommunity } from "../features/communities/InviteToCommunity";
 import { ConnectionActions } from "../features/connections/ConnectionActions";
+import { MessageButton } from "../features/messaging/MessageButton";
 import { useProfile, useSetBlocked } from "../features/profile/api";
 import {
   EXPERIENCE_LEVELS,
@@ -97,6 +98,9 @@ export function ProfilePage() {
                 name={user.display_name}
                 connection={user.connection}
               />
+              {user.connection?.state === "CONNECTED" && (
+                <MessageButton userId={user.id} name={user.display_name} />
+              )}
               <button
                 type="button"
                 disabled={setBlocked.isPending}

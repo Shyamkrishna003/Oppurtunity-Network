@@ -56,6 +56,7 @@ known-first-party = [
     "applications",
     "connections",
     "referrals",
+    "messaging",
     "notifications",
     "realtime",
     "audit",
