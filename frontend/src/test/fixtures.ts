@@ -39,6 +39,8 @@ export function makeViewer(overrides: Partial<OpportunityViewer> = {}): Opportun
     can_apply: false,
     application: null,
     can_request_referral: false,
+    can_register: false,
+    registration: null,
     ...overrides,
   };
 }

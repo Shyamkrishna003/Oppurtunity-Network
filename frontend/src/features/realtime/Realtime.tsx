@@ -3,6 +3,7 @@ import { useEffect } from "react";
 
 import { useAppDispatch } from "../../app/store";
 import { applicationKeys } from "../applications/api";
+import { eventKeys } from "../events/api";
 import { useSessionStatus } from "../auth/api";
 import { connectionKeys } from "../connections/api";
 import { notificationKeys } from "../notifications/api";
@@ -29,6 +30,12 @@ function apply(queryClient: QueryClient, event: StreamEvent): void {
       // One of the viewer's applications moved: its page, "my applications", and the job
       // page that shows its status.
       void queryClient.invalidateQueries({ queryKey: applicationKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      break;
+    case "registration.updated":
+      // The viewer got a place from the waitlist, or lost their registration: the event's
+      // page (how they stand, the joining link) and "my events".
+      void queryClient.invalidateQueries({ queryKey: eventKeys.all });
       void queryClient.invalidateQueries({ queryKey: ["opportunities"] });
       break;
     case "connection.updated":

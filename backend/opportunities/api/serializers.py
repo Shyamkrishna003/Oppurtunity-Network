@@ -6,6 +6,7 @@ from rest_framework import serializers
 from applications.models import ApplicationStatus
 from common.choices import ExperienceLevel, WorkMode
 from communities.api.serializers import CommunityRefSerializer
+from events.models import RegistrationStatus
 from events.serializers import EventDetailSerializer
 from jobs.models import EmploymentType
 from jobs.serializers import JobDetailSerializer
@@ -100,6 +101,13 @@ class ViewerApplicationSerializer(serializers.Serializer[Any]):
     status = serializers.ChoiceField(choices=ApplicationStatus.choices)
 
 
+class ViewerRegistrationSerializer(serializers.Serializer[Any]):
+    id = serializers.UUIDField()
+    status = serializers.ChoiceField(choices=RegistrationStatus.choices)
+    # Counting from 1; null unless waiting.
+    waitlist_position = serializers.IntegerField(allow_null=True)
+
+
 class OpportunityViewerSerializer(serializers.Serializer[Any]):
     """What the caller may do with this opportunity. The server still enforces all of it."""
 
@@ -113,6 +121,10 @@ class OpportunityViewerSerializer(serializers.Serializer[Any]):
     # An organization's job that is applied to here, and still open. It does not say
     # whether the caller knows anyone at the organization.
     can_request_referral = serializers.BooleanField()
+    # Events only. ``registration`` is the caller's own, if they ever registered, even if
+    # they cancelled it since.
+    can_register = serializers.BooleanField()
+    registration = ViewerRegistrationSerializer(allow_null=True)
 
 
 class OpportunitySerializer(serializers.ModelSerializer[Opportunity]):
@@ -189,6 +201,18 @@ class OpportunityDetailSerializer(OpportunitySerializer):
             if self.context.get("application")
             else None,
             "can_request_referral": self.context.get("can_request_referral", False),
+            "can_register": self.context.get("can_register", False),
+            "registration": self._registration(),
+        }
+
+    def _registration(self) -> dict[str, Any] | None:
+        registration = self.context.get("registration")
+        if registration is None:
+            return None
+        return {
+            "id": str(registration.pk),
+            "status": registration.status,
+            "waitlist_position": self.context.get("waitlist_position"),
         }
 
 

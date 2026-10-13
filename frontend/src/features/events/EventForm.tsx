@@ -81,7 +81,7 @@ const EMPTY: Values = {
 };
 
 /** What stays open after publishing, beyond what every opportunity allows. */
-const OPEN_WHEN_PUBLISHED: FieldName[] = ["venue", "online_url", "attendee_visibility"];
+const OPEN_WHEN_PUBLISHED: FieldName[] = ["venue", "online_url", "attendee_visibility", "capacity"];
 
 function fromOpportunity(opportunity: Opportunity): Values {
   const { event } = opportunity;
@@ -251,8 +251,8 @@ export function EventForm({
       {restricted && (
         <Notice kind="ok">
           This event is published. You can still change the description, when registration closes,
-          the venue, the joining link and who sees the attendee list; everything else is fixed so it
-          stays the event people saw.
+          the venue, the joining link, the number of places and who sees the attendee list;
+          everything else is fixed so it stays the event people saw.
         </Notice>
       )}
 

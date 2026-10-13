@@ -1,8 +1,9 @@
 from datetime import timedelta
 
+from django.db.models import F
 from django.utils import timezone
 
-from events.models import EventDetail
+from events.models import EventDetail, EventRegistration
 from events.policies import WORK_MODE_FOR
 from opportunities import search
 from opportunities.models import Opportunity
@@ -48,3 +49,19 @@ def make_event(*, status="DRAFT", event=None, **fields) -> Opportunity:
     EventDetail.objects.create(opportunity=opportunity, **detail)
     search.reindex(opportunity)
     return opportunity
+
+
+def add_registration(event, user=None, status="CONFIRMED") -> EventRegistration:
+    """A registration written directly, keeping the event's count of places in step.
+
+    Waitlisted ones queue in the order they are added.
+    """
+    registration = EventRegistration.objects.create(
+        event_id=event.pk,
+        user=user or UserFactory.create(),
+        status=status,
+        waitlisted_at=timezone.now() if status == "WAITLISTED" else None,
+    )
+    if status == "CONFIRMED":
+        EventDetail.objects.filter(pk=event.pk).update(confirmed_count=F("confirmed_count") + 1)
+    return registration

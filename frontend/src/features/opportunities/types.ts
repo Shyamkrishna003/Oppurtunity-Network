@@ -10,6 +10,13 @@ export type CloseReason = "FILLED" | "CANCELLED" | "COMPLETED" | "OTHER";
 export type EventStatus =
   "SCHEDULED" | "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "COMPLETED" | "CANCELLED";
 export type EventFormat = "IN_PERSON" | "ONLINE" | "HYBRID";
+export type RegistrationStatus = "CONFIRMED" | "WAITLISTED" | "CANCELLED";
+
+export const REGISTRATION_STATUS_LABELS: Record<RegistrationStatus, string> = {
+  CONFIRMED: "Going",
+  WAITLISTED: "On the waitlist",
+  CANCELLED: "Cancelled",
+};
 export type AttendeeVisibility = "PUBLIC" | "ATTENDEES" | "HIDDEN";
 export type EmploymentType = "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERNSHIP" | "TEMPORARY";
 export type SalaryPeriod = "YEAR" | "MONTH" | "HOUR";
@@ -249,5 +256,14 @@ export interface OpportunityDetail extends Opportunity {
     application: { id: string; status: ApplicationStatus } | null;
     /** Whether a referral can be asked for here. Says nothing about knowing anyone there. */
     can_request_referral: boolean;
+    /** Events only: whether registering would be accepted right now. */
+    can_register: boolean;
+    /** The viewer's own registration, if they ever registered, even if cancelled since. */
+    registration: {
+      id: string;
+      status: RegistrationStatus;
+      /** Counting from 1; null unless waiting. */
+      waitlist_position: number | null;
+    } | null;
   };
 }

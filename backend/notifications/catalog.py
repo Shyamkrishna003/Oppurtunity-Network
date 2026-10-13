@@ -42,6 +42,7 @@ DEFAULTS: dict[Category, tuple[bool, bool]] = {
     Category.APPLICATIONS: (True, True),
     Category.CONNECTIONS: (True, True),
     Category.REFERRALS: (True, True),
+    Category.EVENTS: (True, True),
 }
 
 DESCRIPTIONS: dict[Category, str] = {
@@ -55,6 +56,9 @@ DESCRIPTIONS: dict[Category, str] = {
     Category.CONNECTIONS: "When someone asks to connect with you, or accepts your request.",
     Category.REFERRALS: (
         "When a connection asks you to refer them, answers your request, or a referral moves on."
+    ),
+    Category.EVENTS: (
+        "When you get a place from the waitlist, or an event you registered for is cancelled."
     ),
 }
 
@@ -333,6 +337,33 @@ SPECS: dict[NotificationType, Spec] = {
             "The referral for “{opportunity_title}” was closed",
             "Between {requester_name} and {referrer_name}. Nothing more will happen with it.",
             _referral,
+        ),
+    ),
+    T.REGISTRATION_PROMOTED: Spec(
+        Category.EVENTS,
+        True,
+        _simple(
+            "You have a place at “{opportunity_title}”",
+            "A place opened up and you were next on the waitlist. You are going.",
+            _opportunity,
+        ),
+    ),
+    T.REGISTRATION_REMOVED: Spec(
+        Category.EVENTS,
+        True,
+        _simple(
+            "Your registration for “{opportunity_title}” was cancelled",
+            "The organizers cancelled it. You can contact them if this looks like a mistake.",
+            _opportunity,
+        ),
+    ),
+    T.EVENT_CANCELLED: Spec(
+        Category.EVENTS,
+        True,
+        _simple(
+            "“{opportunity_title}” has been cancelled",
+            "The organizers called the event off, so your registration no longer applies.",
+            _opportunity,
         ),
     ),
 }

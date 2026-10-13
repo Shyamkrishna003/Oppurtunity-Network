@@ -95,6 +95,10 @@ function AccountMenu({ me }: { me: Me }) {
           <Icon name="megaphone" />
           My opportunities
         </NavLink>
+        <NavLink to="/my/events">
+          <Icon name="calendar" />
+          My events
+        </NavLink>
         <NavLink to="/saved">
           <Icon name="bookmark" />
           Saved
