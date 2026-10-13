@@ -113,6 +113,7 @@ def test_the_people_who_manage_a_job_see_its_applications(api_as, django_assert_
             "headline": first.applicant.profile.headline,
             "avatar_url": None,
         },
+        "referrals": [],
         "next_statuses": ["SCREENING", "SHORTLISTED", "INTERVIEW", "OFFER", "HIRED", "REJECTED"],
     }
     assert rows[0]["next_statuses"] == ["OFFER", "HIRED", "REJECTED"]

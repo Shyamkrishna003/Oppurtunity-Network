@@ -8,6 +8,7 @@ from applications.models import Application, ApplicationStatus, ApplicationStatu
 from opportunities.api.serializers import OpportunityOrganizationSerializer
 from opportunities.models import Opportunity
 from organizations.api.serializers import PersonSerializer
+from referrals.models import ReferralRequest
 
 
 class ApplySerializer(serializers.Serializer[Any]):
@@ -68,6 +69,17 @@ class ApplicationStepSerializer(serializers.ModelSerializer[ApplicationStatusHis
         return PersonSerializer(step.actor).data
 
 
+class ApplicationReferralSerializer(serializers.ModelSerializer[ReferralRequest]):
+    """A referral attached to an application: who vouches for the applicant, and what they
+    said. For the people deciding on the application, never for the applicant."""
+
+    referrer = PersonSerializer(read_only=True)
+
+    class Meta:
+        model = ReferralRequest
+        fields = ("id", "referrer", "endorsement_note", "referred_at")
+
+
 class ApplicationViewerSerializer(serializers.Serializer[Any]):
     """What the caller may do with this application. The server still enforces all of it."""
 
@@ -83,6 +95,7 @@ class ApplicationViewerSerializer(serializers.Serializer[Any]):
 
 class ApplicationDetailSerializer(ApplicationSerializer):
     applicant = PersonSerializer(read_only=True)
+    referrals = serializers.SerializerMethodField()
     history = serializers.SerializerMethodField()
     viewer = serializers.SerializerMethodField()
 
@@ -92,9 +105,21 @@ class ApplicationDetailSerializer(ApplicationSerializer):
             "cover_note",
             "headline",
             "applicant",
+            "referrals",
             "history",
             "viewer",
         )
+
+    @extend_schema_field(ApplicationReferralSerializer(many=True))
+    def get_referrals(self, application: Application) -> Any:
+        """Who referred the applicant, for the people deciding. Always empty for the
+        applicant, who follows their referrals on their own pages."""
+        if not policies.decides(self.context["actor"]):
+            return []
+        referrals = application.referrals.select_related("referrer__profile").order_by(
+            "referred_at"
+        )
+        return ApplicationReferralSerializer(referrals, many=True).data
 
     @extend_schema_field(ApplicationStepSerializer(many=True))
     def get_history(self, application: Application) -> Any:
@@ -119,6 +144,7 @@ class PipelineApplicationSerializer(serializers.ModelSerializer[Application]):
     """An application as a row in its job's pipeline, for the job's managers."""
 
     applicant = PersonSerializer(read_only=True)
+    referrals = serializers.SerializerMethodField()
     next_statuses = serializers.SerializerMethodField()
 
     class Meta:
@@ -130,8 +156,17 @@ class PipelineApplicationSerializer(serializers.ModelSerializer[Application]):
             "status_changed_at",
             "headline",
             "applicant",
+            "referrals",
             "next_statuses",
         )
+
+    @extend_schema_field(ApplicationReferralSerializer(many=True))
+    def get_referrals(self, application: Application) -> Any:
+        # Prefetched with the list. A manager's own application shows none: what a
+        # referrer wrote about them is not for them.
+        if application.applicant_id == self.context["viewer_id"]:
+            return []
+        return ApplicationReferralSerializer(application.referrals.all(), many=True).data
 
     @extend_schema_field(
         serializers.ListField(child=serializers.ChoiceField(choices=ApplicationStatus.choices))

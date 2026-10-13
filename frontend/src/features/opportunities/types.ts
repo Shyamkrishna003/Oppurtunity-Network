@@ -190,5 +190,7 @@ export interface OpportunityDetail extends Opportunity {
     can_apply: boolean;
     /** The viewer's own application to this job, if they ever made one. */
     application: { id: string; status: ApplicationStatus } | null;
+    /** Whether a referral can be asked for here. Says nothing about knowing anyone there. */
+    can_request_referral: boolean;
   };
 }

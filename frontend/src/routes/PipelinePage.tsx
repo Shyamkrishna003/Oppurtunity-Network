@@ -31,6 +31,15 @@ function Row({ application }: { application: PipelineApplication }) {
           {application.headline && `${application.headline} · `}
           applied {formatDate(application.created_at)}
         </div>
+        {application.referrals.length > 0 && (
+          <div>
+            <span className="badge badge-ok">Referred</span>{" "}
+            <span className="muted">
+              by{" "}
+              {application.referrals.map((referral) => referral.referrer.display_name).join(", ")}
+            </span>
+          </div>
+        )}
         <span className={statusBadgeClass(application.status)}>
           {APPLICATION_STATUS_LABELS[application.status]}
         </span>

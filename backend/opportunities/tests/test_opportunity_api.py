@@ -91,6 +91,7 @@ def test_creating_a_personal_job_makes_a_draft_with_its_detail_row(api_as):
         "is_saved": False,
         "can_apply": False,
         "application": None,
+        "can_request_referral": False,
     }
     opportunity = Opportunity.objects.get(pk=body["id"])
     assert opportunity.creator == user
@@ -287,6 +288,7 @@ def test_people_who_can_see_a_published_job_but_not_manage_it_are_refused(api_as
             # They cannot manage it, but they are free to apply to it.
             "can_apply": True,
             "application": None,
+            "can_request_referral": True,
         }
         assert client.patch(detail(job), {"description": "Hacked"}).status_code == 403
         assert client.post(detail(job, "close/"), {"reason": "OTHER"}).status_code == 403

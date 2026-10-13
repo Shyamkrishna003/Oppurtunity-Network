@@ -26,6 +26,8 @@ import { OrganizationPage } from "../routes/OrganizationPage";
 import { OrganizationsPage } from "../routes/OrganizationsPage";
 import { PipelinePage } from "../routes/PipelinePage";
 import { ProfilePage } from "../routes/ProfilePage";
+import { ReferralPage } from "../routes/ReferralPage";
+import { ReferralsPage } from "../routes/ReferralsPage";
 import { RegisterPage } from "../routes/RegisterPage";
 import { ResetPasswordPage } from "../routes/ResetPasswordPage";
 import { RouteError } from "../routes/RouteError";
@@ -68,6 +70,8 @@ export const routes: RouteObject[] = [
               { path: "applications", element: <ApplicationsPage /> },
               { path: "applications/:applicationId", element: <ApplicationPage /> },
               { path: "connections", element: <ConnectionsPage /> },
+              { path: "referrals", element: <ReferralsPage /> },
+              { path: "referrals/:referralId", element: <ReferralPage /> },
               { path: "notifications", element: <NotificationsPage /> },
               { path: "settings/notifications", element: <SettingsNotificationsPage /> },
               {

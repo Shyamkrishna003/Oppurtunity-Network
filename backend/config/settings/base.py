@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "jobs",
     "applications",
     "connections",
+    "referrals",
     "notifications",
     "realtime",
     "audit",
@@ -128,6 +129,8 @@ LOGIN_FAILURE_LIMIT = 10
 LOGIN_FAILURE_WINDOW = timedelta(minutes=15)
 
 ORGANIZATION_INVITATION_LIFETIME = timedelta(days=7)
+# How long a referral request waits for an answer before it expires.
+REFERRAL_REQUEST_LIFETIME = timedelta(days=14)
 
 # WebSocket. A ticket is fetched over the API and presented once, within seconds.
 WS_TICKET_TTL = timedelta(seconds=30)
@@ -169,6 +172,11 @@ CELERY_BEAT_SCHEDULE = {
     "expire-opportunities": {
         "task": "opportunities.expire_due",
         "schedule": timedelta(minutes=5),
+        "options": {"queue": "scheduled"},
+    },
+    "sweep-referrals": {
+        "task": "referrals.sweep",
+        "schedule": timedelta(minutes=10),
         "options": {"queue": "scheduled"},
     },
     "redispatch-notification-deliveries": {
@@ -215,6 +223,7 @@ REST_FRAMEWORK = {
         "opportunity_search": "120/min",
         "application_create": "30/day",
         "connection_request": "50/day",
+        "referral_request": "20/day",
         "ws_ticket": "30/min",
     },
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
@@ -240,6 +249,7 @@ SPECTACULAR_SETTINGS = {
         "NotificationCategoryEnum": "notifications.models.Category",
         "OpportunityStatusEnum": "opportunities.models.OpportunityStatus",
         "ApplicationStatusEnum": "applications.models.ApplicationStatus",
+        "ReferralStatusEnum": "referrals.models.ReferralStatus",
         "OpportunityVisibilityEnum": "opportunities.models.OpportunityVisibility",
         "CloseReasonEnum": "opportunities.models.CloseReason",
         "ShareStatusEnum": "opportunities.models.DistributionStatus",

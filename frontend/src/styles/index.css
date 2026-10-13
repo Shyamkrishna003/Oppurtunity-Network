@@ -399,6 +399,27 @@ input[type="file"]::file-selector-button {
   border: 0;
 }
 
+.plain-fieldset.field {
+  margin-bottom: 1rem;
+}
+
+.plain-fieldset > legend {
+  margin-bottom: 0.3rem;
+  padding: 0;
+  font-weight: 800;
+}
+
+/* One option in a list of people to pick from. */
+.field label.choice {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.3rem 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .form-links {
   display: flex;
   flex-wrap: wrap;

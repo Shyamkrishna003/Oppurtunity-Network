@@ -17,6 +17,7 @@ from opportunities import policies, selectors, services
 from opportunities.api import serializers
 from opportunities.api.feed_views import feed_response
 from opportunities.models import CloseReason, Opportunity, OpportunityStatus, OpportunityType
+from referrals import selectors as referrals
 from users.api.utils import current_user
 from users.permissions import IsVerified
 
@@ -36,6 +37,7 @@ def _detail(request: Request, opportunity_id: UUID, status_code: int = 200) -> R
         "is_saved": selectors.is_saved(request.user, opportunity),
         "can_apply": applying.can_apply,
         "application": applying.application,
+        "can_request_referral": referrals.can_request(request.user, opportunity),
     }
     data = serializers.OpportunityDetailSerializer(opportunity, context=context).data
     return Response(data, status=status_code)

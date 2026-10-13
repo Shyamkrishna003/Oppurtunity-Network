@@ -6,6 +6,7 @@ import { applicationKeys } from "../applications/api";
 import { useSessionStatus } from "../auth/api";
 import { connectionKeys } from "../connections/api";
 import { notificationKeys } from "../notifications/api";
+import { referralKeys } from "../referrals/api";
 import { streamStatusChanged } from "./realtimeSlice";
 import { StreamConnection, type StreamEvent } from "./socket";
 
@@ -35,6 +36,11 @@ function apply(queryClient: QueryClient, event: StreamEvent): void {
       // and any open profile, whose connect button depends on it.
       void queryClient.invalidateQueries({ queryKey: connectionKeys.all });
       void queryClient.invalidateQueries({ queryKey: ["users"] });
+      break;
+    case "referral.updated":
+      // A referral the viewer is part of moved: its page, the lists, and the job page that
+      // shows the viewer's requests.
+      void queryClient.invalidateQueries({ queryKey: referralKeys.all });
       break;
     default:
       // An event type from a newer server; ignoring it is always safe.

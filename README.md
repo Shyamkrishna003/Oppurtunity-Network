@@ -8,7 +8,7 @@ A multi-tenant platform where people, organizations, and communities publish, di
 
 ## Status
 
-Phases 0 to 5 are done. What works today:
+Phases 0 to 6 are done. What works today:
 
 - Accounts: register, confirm email, sign in, stay signed in across reloads, sign out, reset and change password.
 - Profiles: details, photo, skills and interests, experience, education, privacy settings, blocking.
@@ -23,9 +23,11 @@ Phases 0 to 5 are done. What works today:
 - Applications: apply to a job with a PDF resume and a note, follow each application under "My applications", and withdraw. Resumes are stored privately and downloaded only through links that expire after a minute.
 - Hiring pipeline: whoever manages a job sees its applications by stage (applied, screening, shortlisted, interview, offer, hired, not selected), moves them forward or rejects them, and can leave notes that only the hiring team reads. Applicants are told of each move in the app, by email and live. A move made on an out-of-date page is refused rather than overwriting a colleague's decision.
 
-- Connections (first half of Phase 6): ask someone to connect from their profile, accept or decline requests, take a request back, end a connection. Your list is yours alone: nobody can browse another person's connections. A decline is never announced to whoever asked, blocking someone ends the connection, and a "connections only" profile now opens for connections.
+- Connections: ask someone to connect from their profile, accept or decline requests, take a request back, end a connection. Your list is yours alone: nobody can browse another person's connections. A decline is never announced to whoever asked, blocking someone ends the connection, and a "connections only" profile now opens for connections.
 
-A user can belong to any number of organizations and communities, with a different role in each. Referrals, the second half of Phase 6, are next.
+- Referrals: on an organization's job, ask one of your own connections who works there to refer you. They accept or decline, then make the referral with a note for the people hiring, who see it next to your application. From then on the referral follows the application to its outcome (interview, offer, joined). Only your own connections who show their membership publicly and take referral requests are offered, and every refusal reads the same, so asking cannot reveal who works where. Unanswered requests expire after 14 days.
+
+A user can belong to any number of organizations and communities, with a different role in each. Events (Phase 7) are next.
 
 ## Stack
 
@@ -115,6 +117,7 @@ backend/
 ├── opportunities/ shared opportunity record, lifecycle, visibility, sharing, feed, relevance
 ├── jobs/          job-specific detail, one-to-one with its opportunity
 ├── connections/   one row per pair of people: requested, accepted or declined
+├── referrals/     referral requests on a job, their workflow, and tracking of the outcome
 └── audit/         append-only AuditLog and record()
 ```
 
