@@ -7,6 +7,7 @@ import { ApplyPanel } from "../features/applications/ApplyPanel";
 import { OrganizerPanel } from "../features/events/OrganizerPanel";
 import { RegisterPanel } from "../features/events/RegisterPanel";
 import { formatEventTime } from "../features/events/time";
+import { ReportButton } from "../features/moderation/ReportButton";
 import {
   useArchiveOpportunity,
   useCloseOpportunity,
@@ -423,6 +424,13 @@ export function OpportunityPage() {
           </p>
         </section>
       )}
+
+      <ReportButton
+        targetType="OPPORTUNITY"
+        targetId={data.id}
+        what={kind}
+        own={data.viewer.can_manage}
+      />
     </>
   );
 }

@@ -116,6 +116,16 @@ function AccountMenu({ me }: { me: Me }) {
           <Icon name="gear" />
           Account
         </NavLink>
+        <NavLink to="/reports">
+          <Icon name="flag" />
+          My reports
+        </NavLink>
+        {me.platform_role !== "USER" && (
+          <NavLink to="/moderation">
+            <Icon name="shield" />
+            Moderation
+          </NavLink>
+        )}
         <div className="menu-divider" />
         <button
           type="button"

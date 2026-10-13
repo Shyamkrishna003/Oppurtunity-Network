@@ -235,6 +235,7 @@ SAMPLE = {
     "starts": "Fri 23 Oct, 18:00",
     "timezone": "Asia/Kolkata",
     "venue": "Kerala Startup Mission",
+    "action": "HIDE",
 }
 
 

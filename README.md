@@ -31,7 +31,7 @@ Phases 0 to 8 are done. What works today:
 
 - Messages: private one-to-one conversations with your connections, started from a profile. Messages arrive live, the inbox shows what is unread, and "Seen" shows how far the other person has read. A message appears at once while it is being sent, and a retry can never send it twice. Blocking someone makes the conversation vanish for both.
 
-Moderation and admin (Phase 9) are next.
+- Moderation (Phase 9, in progress): report a person, organization, community or opportunity from its page. Platform moderators work through a queue: take a report, dismiss it, or hide or remove a reported opportunity with a reason its owners see. Hiding can be undone; every action is recorded. Whoever reported is never named to the reported, and the reporter is told only that their report was reviewed. Actions on people and organizations, community-level moderation, and the audit viewer are next.
 
 A user can belong to any number of organizations and communities, with a different role in each.
 

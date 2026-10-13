@@ -12,6 +12,9 @@ import { CommunityPage } from "../routes/CommunityPage";
 import { ConnectionsPage } from "../routes/ConnectionsPage";
 import { ConversationPage } from "../routes/ConversationPage";
 import { MessagesPage } from "../routes/MessagesPage";
+import { ModerationPage } from "../routes/ModerationPage";
+import { ModerationReportPage } from "../routes/ModerationReportPage";
+import { MyReportsPage } from "../routes/MyReportsPage";
 import { ForgotPasswordPage } from "../routes/ForgotPasswordPage";
 import { HomePage } from "../routes/HomePage";
 import { LoginPage } from "../routes/LoginPage";
@@ -77,6 +80,9 @@ export const routes: RouteObject[] = [
               { path: "applications/:applicationId", element: <ApplicationPage /> },
               { path: "connections", element: <ConnectionsPage /> },
               { path: "messages", element: <MessagesPage /> },
+              { path: "reports", element: <MyReportsPage /> },
+              { path: "moderation", element: <ModerationPage /> },
+              { path: "moderation/reports/:reportId", element: <ModerationReportPage /> },
               { path: "messages/:conversationId", element: <ConversationPage /> },
               { path: "referrals", element: <ReferralsPage /> },
               { path: "referrals/:referralId", element: <ReferralPage /> },

@@ -35,6 +35,8 @@ class NotificationType(models.TextChoices):
     REGISTRATION_REMOVED = "REGISTRATION_REMOVED", "Removed from an event"
     EVENT_CANCELLED = "EVENT_CANCELLED", "An event you registered for was cancelled"
     EVENT_REMINDER = "EVENT_REMINDER", "An event you are going to starts soon"
+    REPORT_REVIEWED = "REPORT_REVIEWED", "A report you made was reviewed"
+    OPPORTUNITY_MODERATED = "OPPORTUNITY_MODERATED", "A moderator acted on your opportunity"
 
 
 class Category(models.TextChoices):
@@ -49,6 +51,7 @@ class Category(models.TextChoices):
     CONNECTIONS = "CONNECTIONS", "Connections"
     REFERRALS = "REFERRALS", "Referrals"
     EVENTS = "EVENTS", "Events I am going to"
+    MODERATION = "MODERATION", "Reports and moderation"
 
 
 class Channel(models.TextChoices):
