@@ -58,7 +58,7 @@ DESCRIPTIONS: dict[Category, str] = {
         "When a connection asks you to refer them, answers your request, or a referral moves on."
     ),
     Category.EVENTS: (
-        "When you get a place from the waitlist, or an event you registered for is cancelled."
+        "Reminders before an event you are going to, a place from the waitlist, and cancellations."
     ),
 }
 
@@ -134,6 +134,20 @@ def _application_advanced(notification: Notification) -> Rendered:
         title = f"Your application to “{p['opportunity_title']}” moved to {p['status_label']}"
         body = "Open your application to see where it stands."
     return Rendered(title=title, body=body, url=_application(p))
+
+
+def _event_reminder(notification: Notification) -> Rendered:
+    p = notification.payload
+    soon = "starts in about an hour" if p.get("lead") == "1h" else "is tomorrow"
+    where = f" at {p['venue']}" if p.get("venue") else ""
+    return Rendered(
+        title=f"“{p['opportunity_title']}” {soon}",
+        body=(
+            f"It starts {p['starts']} ({p['timezone']} time){where}. "
+            "Open the event for your check-in code and the details."
+        ),
+        url=_opportunity(p),
+    )
 
 
 SPECS: dict[NotificationType, Spec] = {
@@ -357,6 +371,7 @@ SPECS: dict[NotificationType, Spec] = {
             _opportunity,
         ),
     ),
+    T.EVENT_REMINDER: Spec(Category.EVENTS, True, _event_reminder),
     T.EVENT_CANCELLED: Spec(
         Category.EVENTS,
         True,

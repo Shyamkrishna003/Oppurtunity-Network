@@ -9,6 +9,7 @@ import { ApiError } from "../../services/http";
 import { useMe, useSessionStatus } from "../auth/api";
 import type { OpportunityDetail } from "../opportunities/types";
 import { useAttendees, useCancelRegistration, useRegister } from "./api";
+import { Ticket } from "./Ticket";
 
 function Attendees({ eventId, count }: { eventId: string; count: number }) {
   const attendees = useAttendees(eventId, count > 0);
@@ -83,6 +84,7 @@ export function RegisterPanel({ opportunity }: { opportunity: OpportunityDetail 
             ? "Your place is kept."
             : `You are number ${String(registration.waitlist_position ?? 1)} in the queue. You get a place, and a message, as soon as one frees up.`}
         </p>
+        {going && <Ticket eventId={opportunity.id} />}
         {upcoming && (
           <button
             type="button"

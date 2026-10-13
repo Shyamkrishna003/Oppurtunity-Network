@@ -3,20 +3,42 @@ from typing import Any
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from events import selectors
+from events import checkin, policies, selectors
 from events.models import EventDetail, EventRegistration, RegistrationStatus
 from opportunities.models import Opportunity, OpportunityStatus
 from organizations.api.serializers import PersonSerializer
 
 
 class MyRegistrationSerializer(serializers.ModelSerializer[EventRegistration]):
-    """The caller's own registration for an event."""
+    """The caller's own registration for an event.
+
+    ``checkin_code`` is what they show at the door, as text to put in a QR code. It is only
+    given while they hold a place at an event that has not finished or been cancelled.
+    """
 
     waitlist_position = serializers.SerializerMethodField()
+    checkin_code = serializers.SerializerMethodField()
 
     class Meta:
         model = EventRegistration
-        fields = ("id", "status", "waitlist_position", "created_at", "updated_at")
+        fields = (
+            "id",
+            "status",
+            "waitlist_position",
+            "checkin_code",
+            "checked_in_at",
+            "created_at",
+            "updated_at",
+        )
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_checkin_code(self, registration: EventRegistration) -> str | None:
+        if (
+            registration.status != RegistrationStatus.CONFIRMED
+            or registration.event.event_status not in policies.UPCOMING
+        ):
+            return None
+        return checkin.code_for(registration)
 
     @extend_schema_field(serializers.IntegerField(allow_null=True, min_value=1))
     def get_waitlist_position(self, registration: EventRegistration) -> int | None:
@@ -30,12 +52,26 @@ class RegistrationSerializer(serializers.ModelSerializer[EventRegistration]):
 
     class Meta:
         model = EventRegistration
-        fields = ("id", "status", "person", "waitlisted_at", "created_at")
+        fields = ("id", "status", "person", "waitlisted_at", "checked_in_at", "created_at")
 
 
 class RegistrationSummarySerializer(serializers.Serializer[Any]):
     counts = serializers.DictField(child=serializers.IntegerField())
     capacity = serializers.IntegerField(allow_null=True)
+    checked_in = serializers.IntegerField()
+    # Whether codes are being accepted at this moment.
+    checkin_open = serializers.BooleanField()
+
+
+class CheckInRequestSerializer(serializers.Serializer[Any]):
+    code = serializers.CharField(max_length=checkin.MAX_CODE_LENGTH, trim_whitespace=True)
+
+
+class CheckInSerializer(serializers.Serializer[Any]):
+    """Who was just checked in."""
+
+    person = PersonSerializer()
+    checked_in_at = serializers.DateTimeField()
 
 
 class _EventOrganizationSerializer(serializers.Serializer[Any]):

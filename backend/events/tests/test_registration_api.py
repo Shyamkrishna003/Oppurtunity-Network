@@ -310,13 +310,23 @@ def test_organizers_see_everyone_who_registered(api_as, django_assert_max_num_qu
         "CANCELLED",
     ]
     assert everyone[0]["person"]["id"] == str(going[0].user.pk)
-    assert set(everyone[0]) == {"id", "status", "person", "waitlisted_at", "created_at"}
+    assert set(everyone[0]) == {
+        "id",
+        "status",
+        "person",
+        "waitlisted_at",
+        "checked_in_at",
+        "created_at",
+    }
     queue = client.get(url(event, "registrations"), {"status": "WAITLISTED"}).json()["results"]
     assert [row["id"] for row in queue] == [str(waiting.pk)]
     assert client.get(url(event, "registrations"), {"status": "nope"}).status_code == 400
     assert client.get(url(event, "registrations/summary")).json() == {
         "counts": {"CONFIRMED": 2, "WAITLISTED": 1, "CANCELLED": 1},
         "capacity": 2,
+        "checked_in": 0,
+        # The event is a week away, so nobody can be checked in yet.
+        "checkin_open": False,
     }
 
     for _ in range(6):

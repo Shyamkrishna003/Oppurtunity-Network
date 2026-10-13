@@ -2,6 +2,7 @@ from typing import Any
 from uuid import UUID
 
 from django.db.models import QuerySet
+from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import generics, status
 from rest_framework.exceptions import NotFound, ValidationError
@@ -12,7 +13,7 @@ from rest_framework.views import APIView
 
 from common.pagination import CursorPagination
 from common.throttles import ScopedThrottle
-from events import registrations, selectors, window
+from events import checkin, registrations, selectors, window
 from events.api import serializers
 from events.models import EventRegistration, RegistrationStatus
 from organizations.api.serializers import PersonSerializer
@@ -113,7 +114,46 @@ class EventRegistrationsSummaryView(APIView):
         """How many people are going, waiting and cancelled, and how many places there are."""
         event = selectors.get_managed_event(current_user(request), opportunity_id)
         return Response(
-            {"counts": selectors.registration_counts(event), "capacity": event.event.capacity}
+            {
+                "counts": selectors.registration_counts(event),
+                "capacity": event.event.capacity,
+                "checked_in": selectors.checked_in_count(event),
+                "checkin_open": checkin.is_open(event.event, timezone.now()),
+            }
+        )
+
+
+class CheckInView(APIView):
+    throttle_classes = [ScopedThrottle]
+    throttle_scope = "event_checkin"
+
+    @extend_schema(
+        request=serializers.CheckInRequestSerializer, responses=serializers.CheckInSerializer
+    )
+    def post(self, request: Request, opportunity_id: UUID) -> Response:
+        """Check someone in from the code they show, as an organizer of the event.
+
+        Answers 200 with who it was. A code that was already used answers 409
+        ``already_checked_in``, with the time of the first scan in ``errors.checked_in_at``.
+        A code that is forged, altered, for another event or no longer current answers 422
+        ``invalid_code``; outside the check-in window, 422 ``checkin_closed``.
+
+        This is the only way a registration becomes checked in: nothing accepts a flag.
+        """
+        serializer = serializers.CheckInRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        checked = checkin.check_in(
+            actor=current_user(request),
+            opportunity_id=opportunity_id,
+            code=serializer.validated_data["code"],
+        )
+        if not checked.newly:
+            raise checkin.already(checked)
+        registration = checked.registration
+        return Response(
+            serializers.CheckInSerializer(
+                {"person": registration.user, "checked_in_at": registration.checked_in_at}
+            ).data
         )
 
 

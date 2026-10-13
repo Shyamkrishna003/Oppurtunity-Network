@@ -231,6 +231,10 @@ SAMPLE = {
     "inviter_name": "Grace Hopper",
     "role_label": "recruiter",
     "reason": "Off topic.",
+    "lead": "24h",
+    "starts": "Fri 23 Oct, 18:00",
+    "timezone": "Asia/Kolkata",
+    "venue": "Kerala Startup Mission",
 }
 
 

@@ -134,6 +134,9 @@ ORGANIZATION_INVITATION_LIFETIME = timedelta(days=7)
 REFERRAL_REQUEST_LIFETIME = timedelta(days=14)
 
 # WebSocket. A ticket is fetched over the API and presented once, within seconds.
+# How long before an event starts its organizers can begin checking people in.
+EVENT_CHECKIN_OPENS_BEFORE = timedelta(hours=2)
+
 WS_TICKET_TTL = timedelta(seconds=30)
 # How often the client is told to send a heartbeat, and how long silence is tolerated.
 WS_HEARTBEAT = timedelta(seconds=30)
@@ -178,6 +181,11 @@ CELERY_BEAT_SCHEDULE = {
     "advance-event-states": {
         "task": "events.advance_states",
         "schedule": timedelta(minutes=1),
+        "options": {"queue": "scheduled"},
+    },
+    "send-event-reminders": {
+        "task": "events.send_reminders",
+        "schedule": timedelta(minutes=5),
         "options": {"queue": "scheduled"},
     },
     "sweep-referrals": {
@@ -229,6 +237,8 @@ REST_FRAMEWORK = {
         "opportunity_search": "120/min",
         "application_create": "30/day",
         "event_register": "60/hour",
+        # One organizer at a busy door: a scan every few seconds.
+        "event_checkin": "1200/hour",
         "connection_request": "50/day",
         "referral_request": "20/day",
         "ws_ticket": "30/min",
