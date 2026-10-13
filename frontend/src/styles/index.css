@@ -1631,6 +1631,17 @@ input[type="file"]::file-selector-button {
   font-weight: 900;
 }
 
+/* The quiet "Report this" link at the foot of a page. */
+.report-line {
+  margin: 2rem 0 0;
+  font-size: 0.875rem;
+  text-align: right;
+}
+
+.report-line button.link {
+  color: var(--muted);
+}
+
 /* --- Messages ------------------------------------------------------------------------- */
 
 .conversation-link {

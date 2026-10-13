@@ -43,6 +43,7 @@ DEFAULTS: dict[Category, tuple[bool, bool]] = {
     Category.CONNECTIONS: (True, True),
     Category.REFERRALS: (True, True),
     Category.EVENTS: (True, True),
+    Category.MODERATION: (True, True),
 }
 
 DESCRIPTIONS: dict[Category, str] = {
@@ -59,6 +60,9 @@ DESCRIPTIONS: dict[Category, str] = {
     ),
     Category.EVENTS: (
         "Reminders before an event you are going to, a place from the waitlist, and cancellations."
+    ),
+    Category.MODERATION: (
+        "When a report you made has been reviewed, or a moderator acts on something of yours."
     ),
 }
 
@@ -134,6 +138,29 @@ def _application_advanced(notification: Notification) -> Rendered:
         title = f"Your application to “{p['opportunity_title']}” moved to {p['status_label']}"
         body = "Open your application to see where it stands."
     return Rendered(title=title, body=body, url=_application(p))
+
+
+_MODERATED = {
+    "HIDE": (
+        "A moderator has hidden “{title}”",
+        "Other people can no longer see it while this is looked into. Reason given: {reason}",
+    ),
+    "REMOVE": (
+        "A moderator has removed “{title}”",
+        "It is no longer shown to anyone else. Reason given: {reason}",
+    ),
+    "RESTORE": (
+        "“{title}” is visible again",
+        "A moderator restored it. Reason given: {reason}",
+    ),
+}
+
+
+def _opportunity_moderated(notification: Notification) -> Rendered:
+    p = notification.payload
+    title, body = _MODERATED.get(p.get("action", ""), _MODERATED["HIDE"])
+    words = {"title": p["opportunity_title"], "reason": p.get("reason", "")}
+    return Rendered(title=title.format(**words), body=body.format(**words), url=_opportunity(p))
 
 
 def _event_reminder(notification: Notification) -> Rendered:
@@ -372,6 +399,17 @@ SPECS: dict[NotificationType, Spec] = {
         ),
     ),
     T.EVENT_REMINDER: Spec(Category.EVENTS, True, _event_reminder),
+    T.REPORT_REVIEWED: Spec(
+        Category.MODERATION,
+        True,
+        _simple(
+            "Your report has been reviewed",
+            "A moderator looked at what you reported and made a decision. Thank you for "
+            "telling us. We do not share what was decided about someone else.",
+            lambda p: "/reports",
+        ),
+    ),
+    T.OPPORTUNITY_MODERATED: Spec(Category.MODERATION, True, _opportunity_moderated),
     T.EVENT_CANCELLED: Spec(
         Category.EVENTS,
         True,

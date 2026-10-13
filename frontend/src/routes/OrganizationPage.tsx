@@ -11,6 +11,7 @@ import {
   useSetMembershipVisibility,
   useUpdateOrganization,
 } from "../features/organizations/api";
+import { ReportButton } from "../features/moderation/ReportButton";
 import { InvitationPanel } from "../features/organizations/InvitationPanel";
 import { MemberList } from "../features/organizations/MemberList";
 import { OrganizationForm } from "../features/organizations/OrganizationForm";
@@ -167,6 +168,7 @@ export function OrganizationPage() {
       )}
 
       <YourMembership organization={data} />
+      <ReportButton targetType="ORGANIZATION" targetId={data.id} what="organization" />
     </>
   );
 }

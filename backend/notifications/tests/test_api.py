@@ -128,6 +128,7 @@ def test_preferences_start_at_the_defaults_and_explain_each_category(api, api_as
         "CONNECTIONS",
         "REFERRALS",
         "EVENTS",
+        "MODERATION",
     }
     assert (preferences["REVIEW"]["in_app"], preferences["REVIEW"]["email"]) == (True, False)
     assert (preferences["POSTINGS"]["in_app"], preferences["POSTINGS"]["email"]) == (True, True)

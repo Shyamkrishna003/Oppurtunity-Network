@@ -17,6 +17,7 @@ import {
   ReviewQueue,
 } from "../features/opportunities/CommunityOpportunities";
 import { RulesEditor } from "../features/communities/RulesEditor";
+import { ReportButton } from "../features/moderation/ReportButton";
 import {
   JOIN_POLICY_LABELS,
   ROLE_LABELS,
@@ -282,6 +283,8 @@ export function CommunityPage() {
           </section>
         </>
       )}
+
+      <ReportButton targetType="COMMUNITY" targetId={data.id} what="community" />
     </>
   );
 }

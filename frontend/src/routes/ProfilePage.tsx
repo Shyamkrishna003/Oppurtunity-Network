@@ -7,6 +7,7 @@ import type { Skill } from "../features/auth/types";
 import { InviteToCommunity } from "../features/communities/InviteToCommunity";
 import { ConnectionActions } from "../features/connections/ConnectionActions";
 import { MessageButton } from "../features/messaging/MessageButton";
+import { ReportButton } from "../features/moderation/ReportButton";
 import { useProfile, useSetBlocked } from "../features/profile/api";
 import {
   EXPERIENCE_LEVELS,
@@ -183,6 +184,8 @@ export function ProfilePage() {
           )}
         </section>
       )}
+
+      <ReportButton targetType="USER" targetId={user.id} what="person" own={user.is_self} />
     </>
   );
 }
