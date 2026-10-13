@@ -9,6 +9,7 @@ import { ApplicationsPage } from "../routes/ApplicationsPage";
 import { CommunitiesPage } from "../routes/CommunitiesPage";
 import { CommunityCreatePage } from "../routes/CommunityCreatePage";
 import { CommunityPage } from "../routes/CommunityPage";
+import { ConnectionsPage } from "../routes/ConnectionsPage";
 import { ForgotPasswordPage } from "../routes/ForgotPasswordPage";
 import { HomePage } from "../routes/HomePage";
 import { LoginPage } from "../routes/LoginPage";
@@ -66,6 +67,7 @@ export const routes: RouteObject[] = [
               { path: "saved", element: <SavedOpportunitiesPage /> },
               { path: "applications", element: <ApplicationsPage /> },
               { path: "applications/:applicationId", element: <ApplicationPage /> },
+              { path: "connections", element: <ConnectionsPage /> },
               { path: "notifications", element: <NotificationsPage /> },
               { path: "settings/notifications", element: <SettingsNotificationsPage /> },
               {

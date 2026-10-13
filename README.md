@@ -23,7 +23,9 @@ Phases 0 to 5 are done. What works today:
 - Applications: apply to a job with a PDF resume and a note, follow each application under "My applications", and withdraw. Resumes are stored privately and downloaded only through links that expire after a minute.
 - Hiring pipeline: whoever manages a job sees its applications by stage (applied, screening, shortlisted, interview, offer, hired, not selected), moves them forward or rejects them, and can leave notes that only the hiring team reads. Applicants are told of each move in the app, by email and live. A move made on an out-of-date page is refused rather than overwriting a colleague's decision.
 
-A user can belong to any number of organizations and communities, with a different role in each. Connections and referrals are next (Phase 6).
+- Connections (first half of Phase 6): ask someone to connect from their profile, accept or decline requests, take a request back, end a connection. Your list is yours alone: nobody can browse another person's connections. A decline is never announced to whoever asked, blocking someone ends the connection, and a "connections only" profile now opens for connections.
+
+A user can belong to any number of organizations and communities, with a different role in each. Referrals, the second half of Phase 6, are next.
 
 ## Stack
 
@@ -112,6 +114,7 @@ backend/
 ├── communities/   communities, membership state machine, rules
 ├── opportunities/ shared opportunity record, lifecycle, visibility, sharing, feed, relevance
 ├── jobs/          job-specific detail, one-to-one with its opportunity
+├── connections/   one row per pair of people: requested, accepted or declined
 └── audit/         append-only AuditLog and record()
 ```
 

@@ -1,4 +1,5 @@
 import type { ExperienceLevel, SkillSets, WorkMode } from "../auth/types";
+import type { ConnectionRef } from "../connections/types";
 
 export interface Experience {
   id: string;
@@ -22,6 +23,8 @@ export interface Education {
 export interface PublicProfile {
   id: string;
   is_self: boolean;
+  /** Null on one's own profile, and when there is no connection or request yet. */
+  connection: ConnectionRef | null;
   display_name: string;
   headline: string;
   bio: string;

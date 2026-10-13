@@ -40,6 +40,7 @@ DEFAULTS: dict[Category, tuple[bool, bool]] = {
     Category.REVIEW: (True, False),
     Category.POSTINGS: (True, True),
     Category.APPLICATIONS: (True, True),
+    Category.CONNECTIONS: (True, True),
 }
 
 DESCRIPTIONS: dict[Category, str] = {
@@ -50,6 +51,7 @@ DESCRIPTIONS: dict[Category, str] = {
     ),
     Category.POSTINGS: "What communities decide about your opportunities, and when one expires.",
     Category.APPLICATIONS: "When a job you applied to moves your application on, or decides.",
+    Category.CONNECTIONS: "When someone asks to connect with you, or accepts your request.",
 }
 
 
@@ -239,6 +241,24 @@ SPECS: dict[NotificationType, Spec] = {
             "Your application to “{opportunity_title}” was not selected",
             "The employer has decided not to take it further. Thank you for applying.",
             _application,
+        ),
+    ),
+    T.CONNECTION_REQUESTED: Spec(
+        Category.CONNECTIONS,
+        True,
+        _simple(
+            "{person_name} wants to connect",
+            "Open your connections to accept or decline.",
+            lambda p: "/connections?show=requests",
+        ),
+    ),
+    T.CONNECTION_ACCEPTED: Spec(
+        Category.CONNECTIONS,
+        True,
+        _simple(
+            "{person_name} accepted your request to connect",
+            "You are now connected.",
+            lambda p: "/connections",
         ),
     ),
 }

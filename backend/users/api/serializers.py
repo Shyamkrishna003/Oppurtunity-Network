@@ -4,6 +4,7 @@ from django.core.files.storage import default_storage
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from connections.policies import State
 from taxonomy.api.serializers import SkillSerializer
 from users import selectors
 from users.models import (
@@ -159,11 +160,21 @@ class EducationSerializer(_DatedEntrySerializer):
         fields = ("id", "institution", "degree", "field_of_study", "start_date", "end_date")
 
 
+class ProfileConnectionSerializer(serializers.Serializer[Any]):
+    """What stands between the viewer and the profile's owner, as the viewer sees it."""
+
+    id = serializers.UUIDField()
+    state = serializers.ChoiceField(choices=[(state.value, state.value) for state in State])
+
+
 class PublicProfileSerializer(serializers.Serializer[Any]):
     """Another user's profile as the viewer may see it. Hidden sections are null."""
 
     id = serializers.UUIDField()
     is_self = serializers.BooleanField()
+    # Null on one's own profile, and when the viewer has neither a connection nor a request
+    # with this person: then they may ask to connect.
+    connection = ProfileConnectionSerializer(allow_null=True)
     display_name = serializers.CharField()
     headline = serializers.CharField()
     bio = serializers.CharField()

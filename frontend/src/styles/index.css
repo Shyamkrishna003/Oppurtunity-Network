@@ -974,6 +974,12 @@ input[type="file"]::file-selector-button {
   width: auto;
 }
 
+/* What went wrong with a row's action takes a line of its own under the row. */
+.entry > .notice {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
 /* A control that sits in a list row has no space of its own to add below it. */
 .entry .search-form {
   flex: none;
@@ -1174,6 +1180,10 @@ input[type="file"]::file-selector-button {
 }
 
 .profile-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.6rem;
   margin-left: auto;
 }
 

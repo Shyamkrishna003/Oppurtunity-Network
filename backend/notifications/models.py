@@ -22,6 +22,8 @@ class NotificationType(models.TextChoices):
     APPLICATION_WITHDRAWN = "APPLICATION_WITHDRAWN", "An application was withdrawn"
     APPLICATION_ADVANCED = "APPLICATION_ADVANCED", "Your application moved forward"
     APPLICATION_REJECTED = "APPLICATION_REJECTED", "Your application was not selected"
+    CONNECTION_REQUESTED = "CONNECTION_REQUESTED", "Someone asked to connect"
+    CONNECTION_ACCEPTED = "CONNECTION_ACCEPTED", "Connection request accepted"
 
 
 class Category(models.TextChoices):
@@ -33,6 +35,7 @@ class Category(models.TextChoices):
     REVIEW = "REVIEW", "Things waiting for my review"
     POSTINGS = "POSTINGS", "My opportunities"
     APPLICATIONS = "APPLICATIONS", "My applications"
+    CONNECTIONS = "CONNECTIONS", "Connections"
 
 
 class Channel(models.TextChoices):

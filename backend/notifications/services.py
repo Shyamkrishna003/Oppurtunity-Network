@@ -117,6 +117,22 @@ def notify_each(recipients: Iterable[User], **notification: Any) -> int:
     return sum(notify(recipient=recipient, **notification) is not None for recipient in recipients)
 
 
+def retract(*, recipient_id: UUID, type: NotificationType, target: models.Model) -> int:
+    """Take back what ``recipient`` was told about ``target``, because it is no longer true
+    (a request that was withdrawn before they answered). Returns how many were removed.
+
+    An email already sent stays sent; one still queued finds its notification gone and is
+    dropped.
+    """
+    removed, _ = Notification.objects.filter(
+        recipient_id=recipient_id,
+        type=type,
+        target_type=target._meta.label_lower,
+        target_id=target.pk,
+    ).delete()
+    return removed
+
+
 # --- Reading ----------------------------------------------------------------------------
 
 

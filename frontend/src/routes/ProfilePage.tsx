@@ -5,6 +5,7 @@ import { Notice } from "../components/Notice";
 import { Splash } from "../components/Splash";
 import type { Skill } from "../features/auth/types";
 import { InviteToCommunity } from "../features/communities/InviteToCommunity";
+import { ConnectionActions } from "../features/connections/ConnectionActions";
 import { useProfile, useSetBlocked } from "../features/profile/api";
 import {
   EXPERIENCE_LEVELS,
@@ -90,24 +91,31 @@ export function ProfilePage() {
               Edit profile
             </Link>
           ) : (
-            <button
-              type="button"
-              disabled={setBlocked.isPending}
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `Block ${user.display_name}? Neither of you will be able to open the other's profile.`,
-                  )
-                ) {
-                  setBlocked.mutate(
-                    { userId: user.id, blocked: true },
-                    { onSuccess: () => void navigate("/settings/account") },
-                  );
-                }
-              }}
-            >
-              Block
-            </button>
+            <>
+              <ConnectionActions
+                userId={user.id}
+                name={user.display_name}
+                connection={user.connection}
+              />
+              <button
+                type="button"
+                disabled={setBlocked.isPending}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Block ${user.display_name}? Neither of you will be able to open the other's profile, and any connection between you ends.`,
+                    )
+                  ) {
+                    setBlocked.mutate(
+                      { userId: user.id, blocked: true },
+                      { onSuccess: () => void navigate("/settings/account") },
+                    );
+                  }
+                }}
+              >
+                Block
+              </button>
+            </>
           )}
         </div>
       </header>

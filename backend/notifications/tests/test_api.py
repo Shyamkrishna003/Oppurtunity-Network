@@ -119,7 +119,14 @@ def test_preferences_start_at_the_defaults_and_explain_each_category(api, api_as
     response = api_as(UserFactory()).get(PREFERENCES)
 
     preferences = {p["category"]: p for p in response.json()["preferences"]}
-    assert set(preferences) == {"INVITATIONS", "MEMBERSHIP", "REVIEW", "POSTINGS", "APPLICATIONS"}
+    assert set(preferences) == {
+        "INVITATIONS",
+        "MEMBERSHIP",
+        "REVIEW",
+        "POSTINGS",
+        "APPLICATIONS",
+        "CONNECTIONS",
+    }
     assert (preferences["REVIEW"]["in_app"], preferences["REVIEW"]["email"]) == (True, False)
     assert (preferences["POSTINGS"]["in_app"], preferences["POSTINGS"]["email"]) == (True, True)
     assert preferences["REVIEW"]["title"] == "Things waiting for my review"
