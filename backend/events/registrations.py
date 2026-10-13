@@ -79,7 +79,9 @@ def _promote(event: EventDetail) -> int:
             break
         REGISTRATION.apply(registration, R.CONFIRMED, actor=None)
         registration.waitlisted_at = None
-        registration.save(update_fields=["status", "waitlisted_at", "updated_at"])
+        # A new place, so a new check-in code: one from an earlier stay must not work.
+        registration.checkin_serial += 1
+        registration.save(update_fields=["status", "waitlisted_at", "checkin_serial", "updated_at"])
         event.confirmed_count += 1
         record(
             action="event.registration_promoted",
@@ -130,8 +132,10 @@ def register(*, user: User, opportunity_id: UUID) -> tuple[EventRegistration, bo
         if registration is None:
             registration = EventRegistration(event=event, user=user, status=status)
         else:
-            # Back after cancelling: the same row, and no place kept in the queue.
+            # Back after cancelling: the same row, no place kept in the queue, and a new
+            # check-in code.
             REGISTRATION.apply(registration, status, actor=Registrant())
+            registration.checkin_serial += 1
         registration.waitlisted_at = now if status == R.WAITLISTED else None
         registration.save()
         if status == R.CONFIRMED:
@@ -150,8 +154,17 @@ def register(*, user: User, opportunity_id: UUID) -> tuple[EventRegistration, bo
 def _release(
     event: EventDetail, registration: EventRegistration, *, by: User, actor: Registrant | Organizer
 ) -> bool:
-    """Cancel a registration and hand its place on. Returns False if it was already cancelled."""
+    """Cancel a registration and hand its place on. Returns False if it was already cancelled.
+
+    ``registration`` must have been loaded with a row lock, so that a check-in at the door
+    cannot land between the check below and the save.
+    """
     previous = registration.status
+    if registration.checked_in_at is not None:
+        raise Conflict(
+            "This person has already been checked in, so the registration stays.",
+            code="already_checked_in",
+        )
     if not REGISTRATION.apply(registration, R.CANCELLED, actor=actor):
         return False
     registration.waitlisted_at = None
@@ -181,7 +194,9 @@ def cancel_registration(*, user: User, opportunity_id: UUID) -> EventRegistratio
     """Give up one's own place, or one's place in the queue. Doing it twice changes nothing."""
     with transaction.atomic():
         event = _lock_event(opportunity_id)
-        registration = EventRegistration.objects.filter(event=event, user=user).first()
+        registration = (
+            EventRegistration.objects.select_for_update().filter(event=event, user=user).first()
+        )
         if registration is None:
             raise Http404
         if registration.status == R.CANCELLED:
@@ -201,7 +216,8 @@ def remove(*, actor: User, opportunity_id: UUID, registration_id: UUID) -> Event
     with transaction.atomic():
         event = _lock_event(opportunity.pk)
         registration = (
-            EventRegistration.objects.select_related("user")
+            EventRegistration.objects.select_for_update(of=("self",))
+            .select_related("user")
             .filter(pk=registration_id, event=event)
             .first()
         )

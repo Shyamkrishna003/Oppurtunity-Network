@@ -3,7 +3,7 @@ from uuid import UUID
 import structlog
 from celery import shared_task
 
-from events import registrations, services
+from events import registrations, reminders, services
 
 logger = structlog.get_logger(__name__)
 
@@ -14,6 +14,14 @@ def advance_states() -> dict[str, int]:
     moved = services.advance_states()
     logger.info("events_advanced", **moved)
     return moved
+
+
+@shared_task(name="events.send_reminders")
+def send_reminders() -> dict[str, int]:
+    """Periodic sweep: reminds people the day before and an hour before an event starts."""
+    sent = reminders.send_due()
+    logger.info("event_reminders_sent", **{f"lead_{key}": count for key, count in sent.items()})
+    return sent
 
 
 @shared_task(

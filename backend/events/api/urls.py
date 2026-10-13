@@ -35,6 +35,11 @@ urlpatterns = [
         name="event-registration-remove",
     ),
     path(
+        "events/<uuid:opportunity_id>/check-in/",
+        views.CheckInView.as_view(),
+        name="event-check-in",
+    ),
+    path(
         "events/<uuid:opportunity_id>/attendees/",
         views.AttendeesView.as_view(),
         name="event-attendees",

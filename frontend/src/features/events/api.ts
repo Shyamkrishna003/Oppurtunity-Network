@@ -15,6 +15,16 @@ export interface MyRegistration {
   id: string;
   status: RegistrationStatus;
   waitlist_position: number | null;
+  /** What to show at the door, as text for a QR code. Null unless holding a place at an
+   *  event that is still to come. */
+  checkin_code: string | null;
+  checked_in_at: string | null;
+}
+
+/** Who an organizer just checked in. */
+export interface CheckedIn {
+  person: Person;
+  checked_in_at: string;
 }
 
 /** One person in an event's list, as its organizers see it. */
@@ -23,12 +33,16 @@ export interface Registration {
   status: RegistrationStatus;
   person: Person;
   waitlisted_at: string | null;
+  checked_in_at: string | null;
   created_at: string;
 }
 
 export interface RegistrationSummary {
   counts: Record<RegistrationStatus, number>;
   capacity: number | null;
+  checked_in: number;
+  /** Whether codes are being accepted at this moment. */
+  checkin_open: boolean;
 }
 
 export interface MyEvent {
@@ -129,6 +143,29 @@ export function useRegistrationSummary(eventId: string) {
     queryKey: eventKeys.summary(eventId),
     queryFn: ({ signal }) =>
       http<RegistrationSummary>(`/events/${eventId}/registrations/summary/`, { signal }),
+  });
+}
+
+/** The viewer's own registration, with the code to show at the door. */
+export function useMyRegistration(eventId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["events", eventId, "mine"] as const,
+    queryFn: ({ signal }) =>
+      http<MyRegistration>(`/events/${eventId}/my-registration/`, { signal }),
+    enabled,
+  });
+}
+
+/** Checks in whoever the code belongs to. The server alone decides whether it is genuine. */
+export function useCheckIn(eventId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (code: string) =>
+      http<CheckedIn>(`/events/${eventId}/check-in/`, { method: "POST", body: { code } }),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: eventKeys.summary(eventId) });
+      void queryClient.invalidateQueries({ queryKey: ["events", eventId, "registrations"] });
+    },
   });
 }
 

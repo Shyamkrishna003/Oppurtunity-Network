@@ -41,9 +41,9 @@ function Row({
       </div>
       <div className="button-row">
         <span className={status === "CONFIRMED" ? "badge badge-ok" : "badge"}>
-          {REGISTRATION_STATUS_LABELS[status]}
+          {registration.checked_in_at ? "Checked in" : REGISTRATION_STATUS_LABELS[status]}
         </span>
-        {status !== "CANCELLED" && (
+        {status !== "CANCELLED" && !registration.checked_in_at && (
           <button type="button" disabled={busy} onClick={onRemove}>
             Remove <span className="visually-hidden">{person.display_name}</span>
           </button>
@@ -86,7 +86,20 @@ export function OrganizerPanel({ opportunity }: { opportunity: OpportunityDetail
         <p>
           <strong>{counts.CONFIRMED}</strong> going
           {summary.data?.capacity != null && <> of {summary.data.capacity} places</>},{" "}
-          <strong>{counts.WAITLISTED}</strong> on the waitlist.
+          <strong>{counts.WAITLISTED}</strong> on the waitlist
+          {summary.data && summary.data.checked_in > 0 && (
+            <>
+              , <strong>{summary.data.checked_in}</strong> checked in
+            </>
+          )}
+          .
+        </p>
+      )}
+      {live && (
+        <p>
+          <Link to={`/opportunities/${opportunity.id}/check-in`} className="button">
+            Check people in
+          </Link>
         </p>
       )}
 

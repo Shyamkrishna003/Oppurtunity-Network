@@ -1020,6 +1020,36 @@ input[type="file"]::file-selector-button {
   margin: 0.25rem 0 0;
 }
 
+/* A check-in code. White with a sticker edge in both themes: scanners need the contrast. */
+.ticket {
+  margin: 0 0 1rem;
+}
+
+.qr {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1rem 0 0.75rem;
+  border: 2px solid var(--edge);
+  border-radius: var(--radius-small);
+  background: #ffffff;
+  box-shadow: 4px 4px 0 var(--drop);
+}
+
+.scanner {
+  margin-bottom: 1rem;
+}
+
+.scanner-view {
+  display: block;
+  width: 100%;
+  max-width: 24rem;
+  margin-top: 0.75rem;
+  border: 2px solid var(--edge);
+  border-radius: var(--radius-small);
+  background: #000000;
+}
+
 /* A handful of people side by side, such as who is going to an event. */
 .people {
   display: flex;

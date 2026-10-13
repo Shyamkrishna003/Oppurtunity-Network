@@ -208,6 +208,59 @@ describe("registering for an event", () => {
   });
 });
 
+describe("the check-in code", () => {
+  const mine = (overrides: Record<string, unknown> = {}) => ({
+    ...going,
+    checkin_code: "signed-code-for-ada",
+    checked_in_at: null,
+    ...overrides,
+  });
+  const routes = (registration: unknown) => ({
+    [`GET ${PAGE}`]: () =>
+      json(event({ confirmed_count: 1 }, { can_register: false, registration: going })),
+    [`GET ${EVENTS}my-registration/`]: () => json(registration),
+  });
+
+  it("is shown as a QR code only when asked for", async () => {
+    mockApi(routes(mine()));
+    renderApp("/opportunities/ev-1", makeSession());
+    const user = userEvent.setup();
+
+    const show = await screen.findByRole("button", { name: "Show check-in code" });
+    expect(screen.queryByRole("img", { name: "Your check-in code" })).toBeNull();
+    await user.click(show);
+
+    const code = screen.getByRole("img", { name: "Your check-in code" });
+    // Drawn here from the text the server gave: dark modules on white.
+    expect(code.querySelector("path")?.getAttribute("d")).toMatch(/^M\d+ \d+h1v1h-1z/);
+    expect(code.querySelector("rect")).toHaveAttribute("fill", "#ffffff");
+    // The code itself is not written out where it could be copied or read aloud.
+    expect(document.body).not.toHaveTextContent("signed-code-for-ada");
+
+    await user.click(screen.getByRole("button", { name: "Hide check-in code" }));
+    expect(screen.queryByRole("img", { name: "Your check-in code" })).toBeNull();
+  });
+
+  it("gives way to the fact of being checked in", async () => {
+    mockApi(routes(mine({ checkin_code: null, checked_in_at: "2026-11-20T12:10:00Z" })));
+    renderApp("/opportunities/ev-1", makeSession());
+
+    expect(await screen.findByText("Checked in")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Show check-in code" })).toBeNull();
+  });
+
+  it("is not offered to someone on the waitlist", async () => {
+    const api = mockApi({
+      [`GET ${PAGE}`]: () => json(event({}, { can_register: false, registration: waiting })),
+    });
+    renderApp("/opportunities/ev-1", makeSession());
+
+    expect(await screen.findByText(/You are number 3 in the queue/)).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Show check-in code" })).toBeNull();
+    expect(api.count(`GET ${EVENTS}my-registration/`)).toBe(0);
+  });
+});
+
 describe("running registrations", () => {
   const registration = (id: string, name: string, status: Registration["status"]) => ({
     id,
@@ -219,6 +272,8 @@ describe("running registrations", () => {
   const summary: RegistrationSummary = {
     counts: { CONFIRMED: 1, WAITLISTED: 1, CANCELLED: 0 },
     capacity: 1,
+    checked_in: 0,
+    checkin_open: false,
   };
   const managed = (overrides: Partial<EventDetail> = {}) =>
     event(overrides, { can_manage: true, can_register: false, editable_fields: ["description"] });

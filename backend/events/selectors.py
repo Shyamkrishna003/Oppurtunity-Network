@@ -124,6 +124,12 @@ def registration_counts(opportunity: Opportunity) -> dict[str, int]:
     return {status: counted.get(status, 0) for status in R.values}
 
 
+def checked_in_count(opportunity: Opportunity) -> int:
+    return EventRegistration.objects.filter(
+        event_id=opportunity.pk, checked_in_at__isnull=False
+    ).count()
+
+
 def list_attendees(viewer: Viewer, opportunity: Opportunity) -> QuerySet[User]:
     """The people going, as far as the viewer may see them.
 

@@ -128,6 +128,14 @@ class EventRegistration(TimestampedModel):
     status = models.CharField(max_length=10, choices=RegistrationStatus.choices)
     # The place in the queue: earliest first. Set exactly while WAITLISTED.
     waitlisted_at = models.DateTimeField(null=True, blank=True)
+    # Part of what the check-in code is signed over. It goes up each time the person gets a
+    # place again, so a code from an earlier stay stops working.
+    checkin_serial = models.PositiveIntegerField(default=0)
+    # Set once, by an organizer presenting the person's code; never by the person.
+    checked_in_at = models.DateTimeField(null=True, blank=True)
+    checked_in_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         constraints = [
@@ -145,6 +153,12 @@ class EventRegistration(TimestampedModel):
                     & models.Q(waitlisted_at__isnull=True)
                 ),
                 name="events_registration_queue_time_matches_status",
+            ),
+            # Only someone holding a place can have been checked in.
+            models.CheckConstraint(
+                condition=models.Q(checked_in_at__isnull=True)
+                | models.Q(status=RegistrationStatus.CONFIRMED),
+                name="events_registration_checkin_needs_a_place",
             ),
         ]
         indexes = [

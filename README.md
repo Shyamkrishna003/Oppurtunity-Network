@@ -8,7 +8,7 @@ A multi-tenant platform where people, organizations, and communities publish, di
 
 ## Status
 
-Phases 0 to 6 are done. What works today:
+Phases 0 to 7 are done. What works today:
 
 - Accounts: register, confirm email, sign in, stay signed in across reloads, sign out, reset and change password.
 - Profiles: details, photo, skills and interests, experience, education, privacy settings, blocking.
@@ -27,7 +27,9 @@ Phases 0 to 6 are done. What works today:
 
 - Referrals: on an organization's job, ask one of your own connections who works there to refer you. They accept or decline, then make the referral with a note for the people hiring, who see it next to your application. From then on the referral follows the application to its outcome (interview, offer, joined). Only your own connections who show their membership publicly and take referral requests are offered, and every refusal reads the same, so asking cannot reveal who works where. Unanswered requests expire after 14 days.
 
-- Events (Phase 7, in progress): host an event personally or for an organization, in person, online or both, with its times kept in the event's own time zone. Publish, edit within limits, cancel; events appear in the feed next to jobs and can be filtered. Registration opens and closes and events complete by themselves as their times pass. Register for a place, or join the waitlist when an event is full: the place freed by a cancellation goes at once to whoever waited longest, who is told in the app, by email and live. Organizers see who is coming, can remove a registration, change the number of places, and close or reopen registration; cancelling an event tells everyone registered. The link to join online is only shown to the people running the event and to those holding a place, and the attendee list to whoever the organizers chose. Check-in and reminders are next.
+- Events: host an event personally or for an organization, in person, online or both, with its times kept in the event's own time zone. Publish, edit within limits, cancel; events appear in the feed next to jobs and can be filtered. Registration opens and closes and events complete by themselves as their times pass. Register for a place, or join the waitlist when an event is full: the place freed by a cancellation goes at once to whoever waited longest, who is told in the app, by email and live. Organizers see who is coming, can remove a registration, change the number of places, and close or reopen registration; cancelling an event tells everyone registered. The link to join online is only shown to the people running the event and to those holding a place, and the attendee list to whoever the organizers chose. Everyone going is reminded the day before and an hour before. At the door, each attendee shows a QR code from the event's page and an organizer scans it (or pastes it) on the check-in screen; the code is signed by the server, works once, only for that event, and stops working if the place is given up.
+
+Messaging (Phase 8) is next.
 
 A user can belong to any number of organizations and communities, with a different role in each.
 

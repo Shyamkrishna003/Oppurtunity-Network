@@ -34,6 +34,7 @@ class NotificationType(models.TextChoices):
     REGISTRATION_PROMOTED = "REGISTRATION_PROMOTED", "You got a place at an event"
     REGISTRATION_REMOVED = "REGISTRATION_REMOVED", "Removed from an event"
     EVENT_CANCELLED = "EVENT_CANCELLED", "An event you registered for was cancelled"
+    EVENT_REMINDER = "EVENT_REMINDER", "An event you are going to starts soon"
 
 
 class Category(models.TextChoices):
