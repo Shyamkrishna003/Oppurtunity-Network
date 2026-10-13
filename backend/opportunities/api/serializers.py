@@ -6,6 +6,7 @@ from rest_framework import serializers
 from applications.models import ApplicationStatus
 from common.choices import ExperienceLevel, WorkMode
 from communities.api.serializers import CommunityRefSerializer
+from events.serializers import EventDetailSerializer
 from jobs.models import EmploymentType
 from jobs.serializers import JobDetailSerializer
 from opportunities import policies
@@ -29,6 +30,7 @@ class OpportunityFieldsSerializer(serializers.ModelSerializer[Opportunity]):
     """The shared, editable fields, plus the nested type-specific object and the skills."""
 
     job = JobDetailSerializer(required=False)
+    event = EventDetailSerializer(required=False)
     skill_ids = serializers.ListField(
         child=serializers.UUIDField(), required=False, max_length=MAX_SKILLS
     )
@@ -45,8 +47,22 @@ class OpportunityFieldsSerializer(serializers.ModelSerializer[Opportunity]):
             "city",
             "deadline",
             "job",
+            "event",
             "skill_ids",
         )
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        """A job has no ``event`` and an event has no ``job``."""
+        type = attrs.get("type") or getattr(self.instance, "type", None)
+        if type is None:
+            return attrs
+        kind = OpportunityType(type)
+        other = "job" if kind == OpportunityType.EVENT else "event"
+        if other in attrs:
+            raise serializers.ValidationError(
+                {other: f"This is not part of {kind.label.lower()} opportunities."}
+            )
+        return attrs
 
     def validate_title(self, value: str) -> str:
         title = " ".join(value.split())
@@ -103,7 +119,9 @@ class OpportunitySerializer(serializers.ModelSerializer[Opportunity]):
     organization = OpportunityOrganizationSerializer(read_only=True)
     posted_by = serializers.SerializerMethodField()
     skills = SkillSerializer(many=True, read_only=True)
-    job = JobDetailSerializer(read_only=True)
+    # Exactly one of these is set, according to ``type``; the other is null.
+    job = JobDetailSerializer(read_only=True, allow_null=True)
+    event = EventDetailSerializer(read_only=True, allow_null=True)
 
     class Meta:
         model = Opportunity
@@ -127,6 +145,7 @@ class OpportunitySerializer(serializers.ModelSerializer[Opportunity]):
             "posted_by",
             "skills",
             "job",
+            "event",
         )
 
     @extend_schema_field(PersonSerializer(allow_null=True))

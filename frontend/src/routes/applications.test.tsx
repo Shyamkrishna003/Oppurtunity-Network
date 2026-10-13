@@ -46,6 +46,7 @@ function job(overrides: Partial<OpportunityDetail> = {}): OpportunityDetail {
     },
     posted_by: null,
     skills: [],
+    event: null,
     job: {
       department: "",
       employment_type: "FULL_TIME",

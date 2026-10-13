@@ -36,6 +36,8 @@ class ModerationStatus(models.TextChoices):
 class CloseReason(models.TextChoices):
     FILLED = "FILLED", "Filled"
     CANCELLED = "CANCELLED", "Cancelled"
+    # Set by the system when an event has taken place; never chosen by a person.
+    COMPLETED = "COMPLETED", "Completed"
     OTHER = "OTHER", "Other"
 
 

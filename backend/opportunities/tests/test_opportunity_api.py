@@ -201,12 +201,6 @@ def test_create_validates_input(api_as, overrides, status, field):
     assert not Opportunity.objects.exists()
 
 
-def test_event_opportunities_are_not_available_yet(api_as):
-    response = api_as(UserFactory()).post(URL, payload(type="EVENT"))
-
-    assert (response.status_code, response.json()["code"]) == (422, "type_unavailable")
-
-
 def test_creating_is_rate_limited(api_as, monkeypatch):
     monkeypatch.setitem(ScopedThrottle.THROTTLE_RATES, "opportunity_create", "1/day")
     client = api_as(UserFactory())

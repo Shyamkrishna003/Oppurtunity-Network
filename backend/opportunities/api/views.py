@@ -86,6 +86,7 @@ class OpportunityListView(APIView):
             organization_id=data.pop("organization_id", None),
             skill_ids=data.pop("skill_ids", ()),
             job=data.pop("job", None),
+            event=data.pop("event", None),
             **data,
         )
         return _detail(request, opportunity.pk, status.HTTP_201_CREATED)
@@ -104,8 +105,9 @@ class OpportunityDetailView(APIView):
         responses=serializers.OpportunityDetailSerializer,
     )
     def patch(self, request: Request, opportunity_id: UUID) -> Response:
-        """Edit. Everything is editable in a draft; once published, only the description,
-        the deadline and the number of openings."""
+        """Edit. Everything is editable in a draft. Once published: the description and the
+        deadline, plus a job's number of openings or an event's venue, joining link and
+        attendee visibility."""
         opportunity = selectors.get_opportunity(request.user, opportunity_id)
         serializer = serializers.OpportunityFieldsSerializer(
             opportunity, data=request.data, partial=True
@@ -116,6 +118,7 @@ class OpportunityDetailView(APIView):
             actor=current_user(request),
             opportunity_id=opportunity.pk,
             job_changes=data.pop("job", None),
+            event_changes=data.pop("event", None),
             skill_ids=data.pop("skill_ids", None),
             changes=data,
         )

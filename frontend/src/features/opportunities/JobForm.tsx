@@ -101,6 +101,9 @@ function toDateInput(iso: string | null): string {
 
 function fromOpportunity(opportunity: Opportunity): Values {
   const { job } = opportunity;
+  if (!job) {
+    return EMPTY; // an event: it has its own form
+  }
   return {
     title: opportunity.title,
     description: opportunity.description,

@@ -2,9 +2,10 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 import { Avatar } from "../../components/Avatar";
+import { formatEventTime } from "../events/time";
 import { EXPERIENCE_LEVELS, formatLocation, WORK_MODES } from "../profile/labels";
 import { formatDate, formatSalary } from "./format";
-import { EMPLOYMENT_TYPE_LABELS, type Opportunity } from "./types";
+import { EMPLOYMENT_TYPE_LABELS, EVENT_FORMAT_LABELS, type Opportunity } from "./types";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -35,15 +36,23 @@ export function OpportunityCard({
   actions?: ReactNode;
   children?: ReactNode;
 }) {
-  const { job } = opportunity;
+  const { job, event } = opportunity;
   const owner = opportunity.organization?.name ?? opportunity.posted_by?.display_name;
-  const facts = [
-    job.employment_type && EMPLOYMENT_TYPE_LABELS[job.employment_type],
-    job.experience_level && EXPERIENCE_LEVELS[job.experience_level],
-    opportunity.work_mode && WORK_MODES[opportunity.work_mode],
-    formatLocation(opportunity),
-    formatSalary(job),
-  ].filter(Boolean);
+  const facts = (
+    event
+      ? [
+          formatEventTime(event),
+          event.format && EVENT_FORMAT_LABELS[event.format],
+          [event.venue, formatLocation(opportunity)].filter(Boolean).join(", "),
+        ]
+      : [
+          job?.employment_type && EMPLOYMENT_TYPE_LABELS[job.employment_type],
+          job?.experience_level && EXPERIENCE_LEVELS[job.experience_level],
+          opportunity.work_mode && WORK_MODES[opportunity.work_mode],
+          formatLocation(opportunity),
+          job && formatSalary(job),
+        ]
+  ).filter(Boolean);
   const hurry = timeLeft(opportunity);
 
   return (
@@ -60,12 +69,13 @@ export function OpportunityCard({
             <Link to={`/opportunities/${opportunity.id}`} className="opportunity-title">
               <strong>{opportunity.title}</strong>
             </Link>
+            {event && <span className="badge badge-event">Event</span>}
             {badge}
             {owner && <div className="opportunity-owner">{owner}</div>}
             {facts.length > 0 && <div className="muted">{facts.join(" · ")}</div>}
             {opportunity.deadline && (
               <div className="muted">
-                Apply by {formatDate(opportunity.deadline)}
+                {event ? "Register by" : "Apply by"} {formatDate(opportunity.deadline)}
                 {hurry && <span className="hurry">{hurry}</span>}
               </div>
             )}

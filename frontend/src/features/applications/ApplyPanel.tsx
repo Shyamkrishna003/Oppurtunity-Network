@@ -111,7 +111,7 @@ export function ApplyPanel({ opportunity }: { opportunity: OpportunityDetail }) 
   const [justApplied, setJustApplied] = useState(false);
   const { application, can_apply: canApply } = opportunity.viewer;
   const takesApplicationsHere =
-    opportunity.status === "PUBLISHED" && opportunity.job.application_method === "INTERNAL";
+    opportunity.status === "PUBLISHED" && opportunity.job?.application_method === "INTERNAL";
 
   let content;
   if (application) {

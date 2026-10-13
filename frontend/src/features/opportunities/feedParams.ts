@@ -1,6 +1,7 @@
 /** The URL parameters the feed understands. Anything else in the address is ignored. */
 export const FEED_PARAMS = [
   "q",
+  "type",
   "skill",
   "city",
   "country",
