@@ -1,4 +1,7 @@
+from django.conf import settings
 from django.db import models
+
+from common.models import TimestampedModel
 
 
 class EventStatus(models.TextChoices):
@@ -101,3 +104,57 @@ class EventDetail(models.Model):
 
     def __str__(self) -> str:
         return f"event {self.pk}"
+
+
+class RegistrationStatus(models.TextChoices):
+    CONFIRMED = "CONFIRMED", "Going"
+    WAITLISTED = "WAITLISTED", "On the waitlist"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+class EventRegistration(TimestampedModel):
+    """One person's place at one event, or in the queue for one.
+
+    There is one row per person and event. Cancelling keeps the row, and registering again
+    reuses it, at the back of the queue if the event is full by then. ``status`` only moves
+    through ``policies.REGISTRATION``, always under a lock on the event's row, which is what
+    keeps ``EventDetail.confirmed_count`` equal to the number of CONFIRMED rows.
+    """
+
+    event = models.ForeignKey(EventDetail, on_delete=models.PROTECT, related_name="registrations")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="event_registrations"
+    )
+    status = models.CharField(max_length=10, choices=RegistrationStatus.choices)
+    # The place in the queue: earliest first. Set exactly while WAITLISTED.
+    waitlisted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["event", "user"], name="events_registration_unique"),
+            models.CheckConstraint(
+                condition=models.Q(status__in=RegistrationStatus.values),
+                name="events_registration_status_valid",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    status=RegistrationStatus.WAITLISTED, waitlisted_at__isnull=False
+                )
+                | (
+                    ~models.Q(status=RegistrationStatus.WAITLISTED)
+                    & models.Q(waitlisted_at__isnull=True)
+                ),
+                name="events_registration_queue_time_matches_status",
+            ),
+        ]
+        indexes = [
+            # The attendee list, and the head of the waitlist.
+            models.Index(
+                fields=["event", "status", "waitlisted_at"], name="events_registration_queue"
+            ),
+            # "My events", newest first.
+            models.Index(fields=["user", "-created_at"], name="events_registration_mine"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user_id} at {self.event_id} ({self.status})"

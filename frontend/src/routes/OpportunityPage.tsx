@@ -4,6 +4,8 @@ import { Link, useNavigate, useParams } from "react-router";
 import { Notice } from "../components/Notice";
 import { Splash } from "../components/Splash";
 import { ApplyPanel } from "../features/applications/ApplyPanel";
+import { OrganizerPanel } from "../features/events/OrganizerPanel";
+import { RegisterPanel } from "../features/events/RegisterPanel";
 import { formatEventTime } from "../features/events/time";
 import {
   useArchiveOpportunity,
@@ -402,6 +404,10 @@ export function OpportunityPage() {
         )}
       </section>
 
+      <RegisterPanel opportunity={data} />
+      {event && data.viewer.can_manage && data.status !== "DRAFT" && (
+        <OrganizerPanel opportunity={data} />
+      )}
       <ApplyPanel opportunity={data} />
       <ReferralPanel opportunity={data} />
 

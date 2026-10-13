@@ -13,6 +13,7 @@ import { ConnectionsPage } from "../routes/ConnectionsPage";
 import { ForgotPasswordPage } from "../routes/ForgotPasswordPage";
 import { HomePage } from "../routes/HomePage";
 import { LoginPage } from "../routes/LoginPage";
+import { MyEventsPage } from "../routes/MyEventsPage";
 import { MyOpportunitiesPage } from "../routes/MyOpportunitiesPage";
 import { NotFoundPage } from "../routes/NotFoundPage";
 import { NotificationsPage } from "../routes/NotificationsPage";
@@ -68,6 +69,7 @@ export const routes: RouteObject[] = [
               { path: "my/opportunities", element: <MyOpportunitiesPage /> },
               { path: "saved", element: <SavedOpportunitiesPage /> },
               { path: "applications", element: <ApplicationsPage /> },
+              { path: "my/events", element: <MyEventsPage /> },
               { path: "applications/:applicationId", element: <ApplicationPage /> },
               { path: "connections", element: <ConnectionsPage /> },
               { path: "referrals", element: <ReferralsPage /> },

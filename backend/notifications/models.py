@@ -31,6 +31,9 @@ class NotificationType(models.TextChoices):
     REFERRAL_REFERRED = "REFERRAL_REFERRED", "You were referred"
     REFERRAL_OUTCOME = "REFERRAL_OUTCOME", "News about someone you referred"
     REFERRAL_CLOSED = "REFERRAL_CLOSED", "Referral closed"
+    REGISTRATION_PROMOTED = "REGISTRATION_PROMOTED", "You got a place at an event"
+    REGISTRATION_REMOVED = "REGISTRATION_REMOVED", "Removed from an event"
+    EVENT_CANCELLED = "EVENT_CANCELLED", "An event you registered for was cancelled"
 
 
 class Category(models.TextChoices):
@@ -44,6 +47,7 @@ class Category(models.TextChoices):
     APPLICATIONS = "APPLICATIONS", "My applications"
     CONNECTIONS = "CONNECTIONS", "Connections"
     REFERRALS = "REFERRALS", "Referrals"
+    EVENTS = "EVENTS", "Events I am going to"
 
 
 class Channel(models.TextChoices):

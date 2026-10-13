@@ -10,7 +10,8 @@ class EventDetailSerializer(serializers.ModelSerializer[EventDetail]):
     """The ``event`` object nested in an opportunity, for reading and writing.
 
     ``online_url`` is the way into the event, so it is only given to the people who manage
-    it (pass ``can_manage`` in the context). Everyone else gets ``has_online_url`` instead.
+    it and to those holding a place (pass ``can_manage`` or ``is_going`` in the context).
+    Everyone else gets ``has_online_url`` instead.
     """
 
     has_online_url = serializers.SerializerMethodField()
@@ -38,7 +39,7 @@ class EventDetailSerializer(serializers.ModelSerializer[EventDetail]):
 
     def to_representation(self, instance: EventDetail) -> dict[str, Any]:
         data = super().to_representation(instance)
-        if not self.context.get("can_manage", False):
+        if not (self.context.get("can_manage") or self.context.get("is_going")):
             data["online_url"] = ""
         return data
 

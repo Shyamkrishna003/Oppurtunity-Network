@@ -301,7 +301,7 @@ def test_a_published_event_can_change_where_but_not_when_or_what(api_as):
         detail(event),
         {
             "title": "Something else",
-            "event": {"start_at": at(days=6), "format": "ONLINE", "capacity": 5},
+            "event": {"start_at": at(days=6), "format": "ONLINE", "timezone": "UTC"},
         },
     )
     assert (refused.status_code, refused.json()["code"]) == (422, "locked_after_publish")
@@ -311,7 +311,7 @@ def test_a_published_event_can_change_where_but_not_when_or_what(api_as):
         "work_mode",
         "event.start_at",
         "event.format",
-        "event.capacity",
+        "event.timezone",
     }
     event.event.refresh_from_db()
     assert event.event.format == "IN_PERSON"

@@ -2,6 +2,7 @@
 are called by the opportunity service, inside its transaction; the sweep runs on its own."""
 
 from datetime import datetime
+from functools import partial
 from typing import Any
 
 from django.db import transaction
@@ -10,13 +11,16 @@ from django.utils import timezone
 
 from audit.services import record
 from common.errors import Conflict, FieldErrors
+from common.tasks import enqueue
+from events import registrations
 from events.models import EventDetail, EventFormat, EventStatus
 from events.policies import EVENT, UPCOMING
 from opportunities.models import CloseReason, Opportunity, OpportunityStatus
 from opportunities.policies import Manager
 
-# What may still change once people can see the event: where to go, not when or what.
-EDITABLE_WHEN_PUBLISHED = frozenset({"venue", "online_url", "attendee_visibility"})
+# What may still change once people can see the event: where to go and how many fit, not
+# when or what.
+EDITABLE_WHEN_PUBLISHED = frozenset({"venue", "online_url", "attendee_visibility", "capacity"})
 SWEEP_BATCH = 500
 S = EventStatus
 
@@ -26,6 +30,12 @@ def create_detail(opportunity: Opportunity, values: dict[str, Any]) -> EventDeta
 
 
 def update_detail(detail: EventDetail, changes: dict[str, Any]) -> None:
+    changes = dict(changes)
+    if "capacity" in changes and detail.event_status:
+        # People may be registering right now, so the number of places changes under the
+        # same lock they take, and the waitlist moves up if room was made.
+        registrations.set_capacity(detail.pk, changes.pop("capacity"))
+        detail.refresh_from_db(fields=["capacity", "confirmed_count"])
     if not changes:
         return
     for field, value in changes.items():
@@ -81,6 +91,10 @@ def cancel(detail: EventDetail, manager: Manager) -> None:
         raise Conflict("This event is already over.", code="event_over")
     EVENT.apply(detail, S.CANCELLED, actor=manager)
     detail.save(update_fields=["event_status"])
+    # Everyone registered is told, from a background task: there may be any number of them.
+    from events.tasks import announce_cancellation  # imported here: tasks imports this module
+
+    transaction.on_commit(partial(enqueue, announce_cancellation, str(detail.pk)))
 
 
 # --- The periodic sweep -----------------------------------------------------------------
