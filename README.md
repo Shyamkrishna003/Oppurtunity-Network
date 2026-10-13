@@ -8,7 +8,7 @@ A multi-tenant platform where people, organizations, and communities publish, di
 
 ## Status
 
-Phases 0 to 7 are done. What works today:
+Phases 0 to 8 are done. What works today:
 
 - Accounts: register, confirm email, sign in, stay signed in across reloads, sign out, reset and change password.
 - Profiles: details, photo, skills and interests, experience, education, privacy settings, blocking.
@@ -29,7 +29,9 @@ Phases 0 to 7 are done. What works today:
 
 - Events: host an event personally or for an organization, in person, online or both, with its times kept in the event's own time zone. Publish, edit within limits, cancel; events appear in the feed next to jobs and can be filtered. Registration opens and closes and events complete by themselves as their times pass. Register for a place, or join the waitlist when an event is full: the place freed by a cancellation goes at once to whoever waited longest, who is told in the app, by email and live. Organizers see who is coming, can remove a registration, change the number of places, and close or reopen registration; cancelling an event tells everyone registered. The link to join online is only shown to the people running the event and to those holding a place, and the attendee list to whoever the organizers chose. Everyone going is reminded the day before and an hour before. At the door, each attendee shows a QR code from the event's page and an organizer scans it (or pastes it) on the check-in screen; the code is signed by the server, works once, only for that event, and stops working if the place is given up.
 
-Messaging (Phase 8) is next.
+- Messages: private one-to-one conversations with your connections, started from a profile. Messages arrive live, the inbox shows what is unread, and "Seen" shows how far the other person has read. A message appears at once while it is being sent, and a retry can never send it twice. Blocking someone makes the conversation vanish for both.
+
+Moderation and admin (Phase 9) are next.
 
 A user can belong to any number of organizations and communities, with a different role in each.
 

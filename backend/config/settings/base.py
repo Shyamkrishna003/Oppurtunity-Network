@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "applications",
     "connections",
     "referrals",
+    "messaging",
     "notifications",
     "realtime",
     "audit",
@@ -236,6 +237,8 @@ REST_FRAMEWORK = {
         "opportunity_share": "60/hour",
         "opportunity_search": "120/min",
         "application_create": "30/day",
+        "conversation_start": "60/hour",
+        "message_send": "60/min",
         "event_register": "60/hour",
         # One organizer at a busy door: a scan every few seconds.
         "event_checkin": "1200/hour",

@@ -10,6 +10,8 @@ import { CommunitiesPage } from "../routes/CommunitiesPage";
 import { CommunityCreatePage } from "../routes/CommunityCreatePage";
 import { CommunityPage } from "../routes/CommunityPage";
 import { ConnectionsPage } from "../routes/ConnectionsPage";
+import { ConversationPage } from "../routes/ConversationPage";
+import { MessagesPage } from "../routes/MessagesPage";
 import { ForgotPasswordPage } from "../routes/ForgotPasswordPage";
 import { HomePage } from "../routes/HomePage";
 import { LoginPage } from "../routes/LoginPage";
@@ -74,6 +76,8 @@ export const routes: RouteObject[] = [
               { path: "opportunities/:opportunityId/check-in", element: <CheckInPage /> },
               { path: "applications/:applicationId", element: <ApplicationPage /> },
               { path: "connections", element: <ConnectionsPage /> },
+              { path: "messages", element: <MessagesPage /> },
+              { path: "messages/:conversationId", element: <ConversationPage /> },
               { path: "referrals", element: <ReferralsPage /> },
               { path: "referrals/:referralId", element: <ReferralPage /> },
               { path: "notifications", element: <NotificationsPage /> },

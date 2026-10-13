@@ -6,6 +6,7 @@ import { Icon, type IconName } from "../components/Icon";
 import { useLogout, useMe, useSessionStatus } from "../features/auth/api";
 import { ResendVerification } from "../features/auth/ResendVerification";
 import type { Me } from "../features/auth/types";
+import { MessagesLink } from "../features/messaging/MessagesLink";
 import { NotificationBell } from "../features/notifications/NotificationBell";
 
 function Tab({
@@ -90,6 +91,10 @@ function AccountMenu({ me }: { me: Me }) {
         <NavLink to="/referrals">
           <Icon name="referral" />
           Referrals
+        </NavLink>
+        <NavLink to="/applications">
+          <Icon name="briefcase" />
+          My applications
         </NavLink>
         <NavLink to="/my/opportunities">
           <Icon name="megaphone" />
@@ -191,7 +196,7 @@ export function AppLayout() {
           <Tab to="/organizations" icon="building" label="Organizations" />
           {signedIn && (
             <>
-              <Tab to="/applications" icon="briefcase" label="My applications" />
+              <MessagesLink />
               <NotificationBell />
             </>
           )}
