@@ -50,6 +50,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "common.middleware.RequestContextMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "common.middleware.DataResponseHeadersMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -132,6 +133,9 @@ PASSWORD_RESET_TIMEOUT = 60 * 60
 LOGIN_FAILURE_LIMIT = 10
 LOGIN_FAILURE_WINDOW = timedelta(minutes=15)
 
+# How long the audit trail keeps the address an action came from.
+AUDIT_IP_RETENTION = timedelta(days=90)
+
 ORGANIZATION_INVITATION_LIFETIME = timedelta(days=7)
 # How long a referral request waits for an answer before it expires.
 REFERRAL_REQUEST_LIFETIME = timedelta(days=14)
@@ -211,6 +215,11 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": timedelta(minutes=15),
         "options": {"queue": "analytics"},
     },
+    "forget-old-audit-ips": {
+        "task": "audit.forget_old_ips",
+        "schedule": timedelta(hours=24),
+        "options": {"queue": "scheduled"},
+    },
     "purge-expired-refresh-tokens": {
         "task": "users.purge_expired_refresh_tokens",
         "schedule": timedelta(hours=24),
@@ -226,7 +235,11 @@ REST_FRAMEWORK = {
     # Deny by default: every endpoint must opt in to weaker permissions explicitly.
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_AUTHENTICATION_CLASSES": ["users.authentication.AccessTokenAuthentication"],
+    # A backstop for every endpoint. Those that set their own throttles (below) use those.
+    "DEFAULT_THROTTLE_CLASSES": ["common.throttles.ApiThrottle"],
     "DEFAULT_THROTTLE_RATES": {
+        "api_anon": "120/min",
+        "api_user": "600/min",
         "auth_login": "20/min",
         "auth_register": "10/hour",
         "auth_email": "10/hour",
