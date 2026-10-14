@@ -24,6 +24,26 @@ def _client_ip(request: HttpRequest) -> str | None:
     return request.META.get("REMOTE_ADDR")
 
 
+# Nothing served from these paths is a page: JSON, and files people uploaded.
+_DATA_PATHS = ("/api/", "/media/")
+# So a browser shown one of them directly loads nothing, runs nothing and frames nothing.
+DATA_CONTENT_SECURITY_POLICY = "default-src 'none'; frame-ancestors 'none'; sandbox"
+
+
+class DataResponseHeadersMiddleware:
+    """Marks API and uploaded-file responses as inert. Upload validation is the first
+    defence against a file that is really a web page; this is the second."""
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        response = self.get_response(request)
+        if request.path.startswith(_DATA_PATHS):
+            response.setdefault("Content-Security-Policy", DATA_CONTENT_SECURITY_POLICY)
+        return response
+
+
 class RequestContextMiddleware:
     """Assigns a request ID, exposes it to logs/services, and logs one line per request."""
 
