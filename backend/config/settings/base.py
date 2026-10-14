@@ -206,6 +206,11 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": timedelta(hours=24),
         "options": {"queue": "scheduled"},
     },
+    "refresh-opportunity-stats": {
+        "task": "analytics.refresh_stats",
+        "schedule": timedelta(minutes=15),
+        "options": {"queue": "analytics"},
+    },
     "purge-expired-refresh-tokens": {
         "task": "users.purge_expired_refresh_tokens",
         "schedule": timedelta(hours=24),

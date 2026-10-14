@@ -12,6 +12,7 @@ import type {
   Opportunity,
   OpportunityDetail,
   OpportunityInput,
+  OpportunityNumbers,
   OpportunityStatus,
   SavedItem,
   Share,
@@ -33,6 +34,16 @@ export function useOpportunity(id: string) {
     queryKey: [...keys.detail(id), status],
     queryFn: ({ signal }) => http<OpportunityDetail>(`/opportunities/${id}/`, { signal }),
     enabled: status !== "unknown",
+  });
+}
+
+/** How the opportunity is doing. Only its managers may ask. Under the opportunity's own
+ *  key, so anything that changes the opportunity also refreshes its numbers. */
+export function useOpportunityNumbers(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...keys.detail(id), "numbers"],
+    queryFn: ({ signal }) => http<OpportunityNumbers>(`/opportunities/${id}/stats/`, { signal }),
+    enabled,
   });
 }
 

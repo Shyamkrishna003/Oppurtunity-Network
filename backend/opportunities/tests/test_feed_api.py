@@ -173,7 +173,7 @@ def test_community_filter_and_my_communities_scope(api, api_as):
 @pytest.mark.parametrize(
     "params",
     [
-        {"sort": "popular"},
+        {"sort": "loudest"},
         {"work_mode": "MOON"},
         {"type": "PARTY"},
         {"skill": "not-a-uuid"},

@@ -16,6 +16,7 @@ import {
   usePublishOpportunity,
 } from "../features/opportunities/api";
 import { formatDate, formatSalary } from "../features/opportunities/format";
+import { NumbersPanel } from "../features/opportunities/NumbersPanel";
 import { SaveButton } from "../features/opportunities/SaveButton";
 import { SharePanel } from "../features/opportunities/SharePanel";
 import {
@@ -289,6 +290,7 @@ export function OpportunityPage() {
       )}
 
       {data.viewer.can_manage && <ManagerPanel opportunity={data} />}
+      {data.viewer.can_manage && <NumbersPanel opportunity={data} />}
       {data.viewer.can_manage && open && <SharePanel opportunity={data} />}
       {data.communities.length > 0 && (
         <p className="muted">

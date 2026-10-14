@@ -178,13 +178,30 @@ export interface SavedItem {
   opportunity: Opportunity;
 }
 
-export type FeedSort = "newest" | "deadline" | "relevant";
+export type FeedSort = "newest" | "deadline" | "relevant" | "popular";
 
 export const SORT_LABELS: Record<FeedSort, string> = {
   relevant: "Best match",
   newest: "Newest",
+  popular: "Most popular",
   deadline: "Closing soonest",
 };
+
+/** How an opportunity is doing, for the people who manage it. */
+export interface OpportunityNumbers {
+  /** Different people who opened it, counted once a day each. Not its managers. */
+  views: number;
+  /** In the last thirty days. */
+  recent_views: number;
+  saves: number;
+  applications: number;
+  /** Places held at the event now. */
+  registrations: number;
+  referrals: number;
+  popularity_score: number;
+  /** The last fourteen days, oldest first. */
+  views_by_day: { date: string; views: number }[];
+}
 
 export type ShareStatus = "PENDING" | "APPROVED" | "REJECTED" | "REMOVED";
 
