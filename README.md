@@ -37,7 +37,7 @@ Phases 0 to 8 are done. What works today:
 - Admin dashboard (`/admin`): counts of outcomes (applications, hires, event attendance, referrals), opportunities, people, organizations, communities and waiting reports, computed in the database and kept for a minute.
 - Analytics (Phase 10): opening a published opportunity counts as a view once per person per day; its managers and platform staff are not counted, and who viewed is never stored. Managers see "How it is doing" on their opportunity's page: views, saves, applications or places held, referrals, and views a day for two weeks. The feed can be ordered by "Most popular" (`?sort=popular`), a fixed score of recent views + 3 × saves + 5 × applications, registrations and referrals, rebuilt every 15 minutes.
 - Funnels and insights: a manager's card also shows how far people got (opened → applied → each pipeline stage → hired; asked for a referral → accepted → referred → joined; opened → registered → still holding a place → came). A step counts everyone who reached it, whatever happened afterwards. Owners, admins and recruiters of an organization get the same funnels across everything it posted, plus its most popular open opportunities (`/organizations/:id/insights`). A community's owners and admins see its members, what it shows and reports waiting (`/communities/:id/insights`); applications are not attributed to communities, because nothing records which place led someone to act.
-- Hardening (Phase 11, in progress): the audit log is append-only in the database too (a trigger refuses every update and delete except clearing an address or a deleted account's name), and addresses in it are forgotten after 90 days. Every endpoint has a backstop rate limit (120 requests a minute for a visitor, 600 for an account) besides the tighter ones on sensitive actions. API and uploaded-file responses carry a Content-Security-Policy that stops a browser treating them as pages. Production settings refuse to start with a weak secret key, no host list, a non-https site address, or the secure cookie switched off. A production stack with TLS, a restricted database role, and tested backup and restore scripts is described under "Deploying".
+- Hardening (Phase 11): the audit log is append-only in the database too (a trigger refuses every update and delete except clearing an address or a deleted account's name), and addresses in it are forgotten after 90 days. Every endpoint has a backstop rate limit (120 requests a minute for a visitor, 600 for an account) besides the tighter ones on sensitive actions. API and uploaded-file responses carry a Content-Security-Policy that stops a browser treating them as pages. Production settings refuse to start with a weak secret key, no host list, a non-https site address, or the secure cookie switched off. A production stack with TLS, a restricted database role, and tested backup and restore scripts is described under "Deploying".
 
 A user can belong to any number of organizations and communities, with a different role in each.
 
@@ -120,6 +120,33 @@ scripts/restore.sh backups/db-<stamp>.dump backups/files-<stamp>.tar   # DESTRUC
 ```
 
 Run `backup.sh` nightly from cron and copy the results off the machine; run `restore-check.sh` on a schedule too, since a backup nobody has restored is only a hope. Backups older than 14 days are deleted (`KEEP_DAYS`).
+
+## Observability
+
+- **Logs** are JSON on stdout in production, one line per request with its request ID, user, route, status and duration. The same ID is returned in `X-Request-ID`, in error bodies, and carried into background tasks and audit records.
+- **Health:** `/healthz` (the process is up) and `/readyz` (database, cache and migrations).
+- **Metrics:** set `METRICS_TOKEN` and scrape `http://backend:8000/metrics` from inside the Docker network with `Authorization: Bearer <token>`. It is off without a token and is never routed by the public proxy. Each backend container reports its own requests, so scrape every replica.
+  - `http_requests_total` and `http_request_duration_seconds` by method, URL pattern and status.
+  - `celery_tasks_total` and `celery_task_duration_seconds_sum` by task and outcome.
+  - `celery_queue_length`, `websocket_connections`, `notification_emails_pending`.
+- **Errors:** set `SENTRY_DSN` to report unhandled errors from the backend and the workers. No personal data is sent.
+- **Slow queries:** the production database logs any statement slower than 200 ms.
+
+## Performance
+
+Measured on a seeded database (5,000 users, 30,000 opportunities, 200 communities), which you can recreate in a throwaway database whose name contains `perf`:
+
+```bash
+docker compose exec postgres createdb -U opportunity opportunity_perf
+docker compose run --rm -e DATABASE_URL=postgres://opportunity:opportunity-dev@postgres:5432/opportunity_perf \
+  backend sh -c "python manage.py migrate && python manage.py seed_load"
+```
+
+`seed_load` refuses to run against any database not named for the purpose.
+
+- Every list endpoint takes a fixed number of queries. The feed, search, filters, notifications, pipelines and insights answer in 2 to 80 ms; the personalised "Best match" order is the slowest at about 130 ms.
+- One backend process serves about 40 requests a second: the limit is Python work on one CPU core, not the database. `BACKEND_REPLICAS` sets how many run.
+- Each process keeps at most `DB_POOL_MAX_SIZE` database connections. In a test of 200 people registering at the same moment for an event with 50 places, exactly 50 were confirmed and 150 waitlisted, with no errors.
 
 ## Checks
 

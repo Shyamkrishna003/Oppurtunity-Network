@@ -76,8 +76,12 @@ services:
       - static:/data/static
     depends_on: *datastores-ready
 
+  # One process serves about 40 requests a second (measured), using one CPU core. Nginx
+  # spreads requests over however many of these run.
   backend:
     <<: *backend
+    deploy:
+      replicas: ${BACKEND_REPLICAS:-2}
     depends_on: *app-ready
     healthcheck:
       test:
