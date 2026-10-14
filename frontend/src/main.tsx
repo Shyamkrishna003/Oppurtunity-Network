@@ -1,3 +1,6 @@
+// Must stay first: see the file.
+import "./app/strictPolicy";
+
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 

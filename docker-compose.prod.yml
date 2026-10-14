@@ -1,0 +1,136 @@
+# Production stack. Self-contained: it does not extend docker-compose.yml.
+#
+#   cp .env.production.example .env.production   # then fill it in
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#
+# See "Deploying" in the README for certificates, backups and upgrades.
+name: opportunity-network-prod
+
+x-backend: &backend
+  build:
+    context: ./backend
+    dockerfile: Dockerfile.prod
+  # Named apart from the development images, so the two stacks can share a machine.
+  image: opportunity-network-prod/backend:${APP_VERSION:-latest}
+  env_file: ${ENV_FILE:-.env.production}
+  restart: unless-stopped
+  volumes:
+    - media:/data/media
+    - private_media:/data/private_media
+
+x-datastores-ready: &datastores-ready
+  postgres:
+    condition: service_healthy
+  redis:
+    condition: service_healthy
+
+x-app-ready: &app-ready
+  <<: *datastores-ready
+  migrate:
+    condition: service_completed_successfully
+
+services:
+  # Not published: only the other services can reach it.
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      APP_DB_USER: ${APP_DB_USER}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+    # Log any statement slower than 200 ms.
+    command: ["postgres", "-c", "log_min_duration_statement=200"]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/10-app-role.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Holds the task queue as well as caches, so it keeps its data across restarts.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Runs once per deploy, as the database owner: the only service that may change the
+  # schema. Also gathers Django's static files for Nginx to serve.
+  migrate:
+    <<: *backend
+    restart: "no"
+    command: sh -c "python manage.py migrate --noinput && python manage.py collectstatic --noinput"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    volumes:
+      - static:/data/static
+    depends_on: *datastores-ready
+
+  backend:
+    <<: *backend
+    depends_on: *app-ready
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        # Asked under the site's own name: any other host is refused, as it should be.
+        - "import os, urllib.request as u; u.urlopen(u.Request('http://localhost:8000/healthz', headers={'Host': os.environ['DJANGO_ALLOWED_HOSTS'].split(',')[0]}), timeout=2)"
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 15s
+
+  worker:
+    <<: *backend
+    command: celery -A config worker --loglevel info --queues default,email,notifications,scheduled,analytics
+    depends_on: *app-ready
+
+  # Exactly one beat instance may run, or scheduled tasks fire more than once.
+  beat:
+    <<: *backend
+    command: celery -A config beat --loglevel info --schedule /tmp/celerybeat-schedule
+    depends_on: *app-ready
+
+  # The only published service: TLS, the built web app, and the way in to the API.
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile.prod
+    image: opportunity-network-prod/nginx:${APP_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      SERVER_NAME: ${SERVER_NAME}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      # fullchain.pem and privkey.pem for SERVER_NAME.
+      - ${TLS_CERT_DIR:-./certs}:/etc/nginx/certs:ro
+      - static:/srv/static:ro
+      - media:/srv/media:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/nginx-health"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+volumes:
+  postgres_data:
+  redis_data:
+  media:
+  private_media:
+  static:
