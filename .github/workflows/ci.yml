@@ -88,3 +88,22 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+
+  # What is deployed is built from different Dockerfiles than what the jobs above run, so
+  # build those too: a production image that no longer builds should fail here, not on
+  # the day of a deploy.
+  production-images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Production Compose file is valid
+        run: docker compose -f docker-compose.prod.yml --env-file .env.production.example config --quiet
+        env:
+          ENV_FILE: .env.production.example
+      - name: Build production images
+        run: docker compose -f docker-compose.prod.yml --env-file .env.production.example build backend nginx
+        env:
+          ENV_FILE: .env.production.example
+      - name: Scripts are valid shell
+        run: |
+          for script in scripts/*.sh docker/postgres/*.sh; do sh -n "$script"; done

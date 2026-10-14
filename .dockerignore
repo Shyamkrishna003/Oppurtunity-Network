@@ -1,0 +1,11 @@
+# For images built from the repository root (the production Nginx image).
+.git
+.github
+.env
+.env.*
+backups
+docs
+backend
+**/node_modules
+**/dist
+**/coverage

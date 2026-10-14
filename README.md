@@ -37,7 +37,7 @@ Phases 0 to 8 are done. What works today:
 - Admin dashboard (`/admin`): counts of outcomes (applications, hires, event attendance, referrals), opportunities, people, organizations, communities and waiting reports, computed in the database and kept for a minute.
 - Analytics (Phase 10): opening a published opportunity counts as a view once per person per day; its managers and platform staff are not counted, and who viewed is never stored. Managers see "How it is doing" on their opportunity's page: views, saves, applications or places held, referrals, and views a day for two weeks. The feed can be ordered by "Most popular" (`?sort=popular`), a fixed score of recent views + 3 × saves + 5 × applications, registrations and referrals, rebuilt every 15 minutes.
 - Funnels and insights: a manager's card also shows how far people got (opened → applied → each pipeline stage → hired; asked for a referral → accepted → referred → joined; opened → registered → still holding a place → came). A step counts everyone who reached it, whatever happened afterwards. Owners, admins and recruiters of an organization get the same funnels across everything it posted, plus its most popular open opportunities (`/organizations/:id/insights`). A community's owners and admins see its members, what it shows and reports waiting (`/communities/:id/insights`); applications are not attributed to communities, because nothing records which place led someone to act.
-- Hardening (Phase 11, in progress): the audit log is append-only in the database too (a trigger refuses every update and delete except clearing an address or a deleted account's name), and addresses in it are forgotten after 90 days. Every endpoint has a backstop rate limit (120 requests a minute for a visitor, 600 for an account) besides the tighter ones on sensitive actions. API and uploaded-file responses carry a Content-Security-Policy that stops a browser treating them as pages. Production settings refuse to start with a weak secret key, no host list, a non-https site address, or the secure cookie switched off.
+- Hardening (Phase 11, in progress): the audit log is append-only in the database too (a trigger refuses every update and delete except clearing an address or a deleted account's name), and addresses in it are forgotten after 90 days. Every endpoint has a backstop rate limit (120 requests a minute for a visitor, 600 for an account) besides the tighter ones on sensitive actions. API and uploaded-file responses carry a Content-Security-Policy that stops a browser treating them as pages. Production settings refuse to start with a weak secret key, no host list, a non-https site address, or the secure cookie switched off. A production stack with TLS, a restricted database role, and tested backup and restore scripts is described under "Deploying".
 
 A user can belong to any number of organizations and communities, with a different role in each.
 
@@ -91,7 +91,35 @@ docker compose exec backend python manage.py createsuperuser
 | `postgres`, `redis` | Datastores (Redis: db 0 cache, db 1 Celery broker, db 2 channel layer) |
 | `mailpit` | Captures outgoing email |
 
-Uploaded files go through Django's storage API. Locally they are written to `backend/media/` (git-ignored) and served at `/media/`; production points the same setting at S3-compatible storage.
+Uploaded files go through Django's storage API. Locally they are written to `backend/media/` (git-ignored) and served at `/media/`; the production stack keeps them in Docker volumes served by Nginx. Because all access goes through that API, moving to S3-compatible storage later is a settings change.
+
+## Deploying
+
+The production stack is `docker-compose.prod.yml`: PostgreSQL, Redis, the backend (one ASGI server for HTTP and WebSocket), a Celery worker and beat, and Nginx, which terminates TLS, serves the built web app and is the only published service.
+
+```bash
+cp .env.production.example .env.production     # replace every CHANGE_ME
+mkdir certs                                    # fullchain.pem and privkey.pem for SERVER_NAME
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+docker compose -f docker-compose.prod.yml --env-file .env.production \
+  exec backend python manage.py createsuperuser
+```
+
+- **Certificates** are yours to supply (for example from Let's Encrypt on the host); Nginx reads them from `TLS_CERT_DIR` and must be restarted when they are renewed.
+- **The application refuses to start** with a weak secret key, no host list, a non-https site address, or the secure cookie switched off.
+- **Two database roles.** Migrations run as the owner. The running application connects as a second role that can read and write rows but cannot change tables, truncate, or switch off the audit log's append-only trigger. The role is created when the database volume is first initialised.
+- **Upgrading** is the same `up -d --build` after pulling: the `migrate` service runs first, and the others start only if it succeeds.
+- **Limits.** Nginx allows each address 20 requests a second to the API (bursts of 40) and 40 connections; the application has finer limits per account and per action.
+
+Backups, from the repository root on the host:
+
+```bash
+scripts/backup.sh                                   # database dump + uploaded files into ./backups
+scripts/restore-check.sh backups/db-<stamp>.dump    # restore into a scratch database and verify
+scripts/restore.sh backups/db-<stamp>.dump backups/files-<stamp>.tar   # DESTRUCTIVE: replaces live data
+```
+
+Run `backup.sh` nightly from cron and copy the results off the machine; run `restore-check.sh` on a schedule too, since a backup nobody has restored is only a hope. Backups older than 14 days are deleted (`KEEP_DAYS`).
 
 ## Checks
 

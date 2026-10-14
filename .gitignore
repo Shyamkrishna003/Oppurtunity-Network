@@ -2,6 +2,10 @@
 .env
 .env.*
 !.env.example
+!.env.production.example
+# TLS certificates and database backups never belong in the repository.
+certs/
+backups/
 
 # Python
 __pycache__/

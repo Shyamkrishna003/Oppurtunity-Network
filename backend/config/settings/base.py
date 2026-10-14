@@ -101,7 +101,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = env.path("STATIC_ROOT", default=str(BASE_DIR / "staticfiles"))
 
 # Uploaded files go through Django's storage API; swap STORAGES["default"] for an
 # S3-compatible backend in production without touching application code.
@@ -229,6 +229,11 @@ CELERY_BEAT_SCHEDULE = {
 
 EMAIL_HOST = env("EMAIL_HOST", default="localhost")
 EMAIL_PORT = env.int("EMAIL_PORT", default=25)
+# Empty for a local catch-all such as Mailpit; a real provider needs all three.
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=False)
+EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@opportunity-network.local")
 
 REST_FRAMEWORK = {
