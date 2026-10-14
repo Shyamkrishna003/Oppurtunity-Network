@@ -49,6 +49,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "common.middleware.RequestContextMiddleware",
+    "common.middleware.MetricsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "common.middleware.DataResponseHeadersMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -78,6 +79,10 @@ TEMPLATES = [
 ]
 
 DATABASES = {"default": env.db("DATABASE_URL")}
+# PostgreSQL's just-in-time compiler pays off on long analytical queries. Here every query
+# is short, and compiling the ranked feed's took four times longer than running it
+# (measured on 30,000 opportunities: 646 ms with it, 122 ms without).
+DATABASES["default"].setdefault("OPTIONS", {})["options"] = "-c jit=off"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "users.User"
@@ -132,6 +137,11 @@ EMAIL_VERIFICATION_MAX_AGE = timedelta(days=3)
 PASSWORD_RESET_TIMEOUT = 60 * 60
 LOGIN_FAILURE_LIMIT = 10
 LOGIN_FAILURE_WINDOW = timedelta(minutes=15)
+
+# What a metrics scraper must present to read /metrics. Empty switches the endpoint off.
+METRICS_TOKEN = env("METRICS_TOKEN", default="")
+# Where errors are reported. Empty switches reporting off.
+SENTRY_DSN = env("SENTRY_DSN", default="")
 
 # How long the audit trail keeps the address an action came from.
 AUDIT_IP_RETENTION = timedelta(days=90)

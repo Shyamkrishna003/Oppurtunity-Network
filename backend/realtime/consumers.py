@@ -13,6 +13,7 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.conf import settings
 from django.utils import timezone
 
+from common import metrics
 from realtime import tickets
 from realtime.events import envelope, group_name
 from users.models import User
@@ -64,6 +65,7 @@ class StreamConsumer(AsyncJsonWebsocketConsumer):  # type: ignore[misc]  # chann
         self.user_id = user_id
         await self.channel_layer.group_add(group_name(user_id), self.channel_name)
         self._opened = self._last_heard = time.monotonic()
+        metrics.socket_opened()
         self._watchdog = asyncio.create_task(self._watch())
         expires = timezone.now() + settings.WS_SESSION_MAX_AGE
         await self.send_json(
@@ -84,6 +86,7 @@ class StreamConsumer(AsyncJsonWebsocketConsumer):  # type: ignore[misc]  # chann
             with contextlib.suppress(asyncio.CancelledError):
                 await self._watchdog
         if self.user_id is not None:
+            metrics.socket_closed()
             await self.channel_layer.group_discard(group_name(self.user_id), self.channel_name)
             logger.info("socket_closed", user_id=str(self.user_id), code=code)
 

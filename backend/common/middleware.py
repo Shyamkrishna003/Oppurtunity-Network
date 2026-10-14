@@ -1,3 +1,4 @@
+import hmac
 import re
 import time
 import uuid
@@ -7,13 +8,14 @@ import structlog
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 
-from common import request_context
+from common import metrics, request_context
 
 logger = structlog.get_logger("request")
 
 REQUEST_ID_HEADER = "X-Request-ID"
 _VALID_REQUEST_ID = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
-_UNLOGGED_PATHS = frozenset({"/healthz", "/readyz"})
+METRICS_PATH = "/metrics"
+_UNLOGGED_PATHS = frozenset({"/healthz", "/readyz", METRICS_PATH})
 
 
 def _client_ip(request: HttpRequest) -> str | None:
@@ -44,6 +46,35 @@ class DataResponseHeadersMiddleware:
         return response
 
 
+class MetricsMiddleware:
+    """Serves ``/metrics`` to a scraper that presents the configured token.
+
+    Off (404) unless ``METRICS_TOKEN`` is set. A middleware rather than a view, placed
+    ahead of the host and https checks: a scraper reaches the server directly by its
+    internal name, not through the site's address. The public proxy does not route this
+    path at all.
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        if request.path != METRICS_PATH:
+            return self.get_response(request)
+        token = settings.METRICS_TOKEN
+        if not token:
+            return HttpResponse(status=404)
+        presented = request.headers.get("Authorization", "")
+        if not hmac.compare_digest(presented.encode(), f"Bearer {token}".encode()):
+            return HttpResponse(status=401, headers={"WWW-Authenticate": "Bearer"})
+        from config.celery import app as celery_app
+
+        names = (name for name in celery_app.tasks if not name.startswith("celery."))
+        return HttpResponse(
+            metrics.render(names), content_type="text/plain; version=0.0.4; charset=utf-8"
+        )
+
+
 class RequestContextMiddleware:
     """Assigns a request ID, exposes it to logs/services, and logs one line per request."""
 
@@ -64,6 +95,14 @@ class RequestContextMiddleware:
 
         response[REQUEST_ID_HEADER] = request_id
         if request.path not in _UNLOGGED_PATHS:
+            match = request.resolver_match
+            metrics.record_request(
+                request.method or "",
+                # The pattern, not the path: one series per endpoint, however many IDs.
+                match.route if match is not None else "unmatched",
+                response.status_code,
+                duration_ms / 1000,
+            )
             user = getattr(request, "user", None)
             logger.info(
                 "request_finished",
