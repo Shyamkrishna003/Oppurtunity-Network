@@ -271,8 +271,14 @@ def test_a_report_shows_what_a_moderator_needs_to_decide(api_as):
     assert detail["in_progress_on_target"] == 2
     assert detail["available_actions"] == ["HIDE", "REMOVE"]
     assert detail["actions"] == []
-    # Nothing can be done to a person yet, so only dismissing is offered.
-    assert client.get(one(about_person)).json()["available_actions"] == []
+    # A moderator can warn a person or stop them posting; suspending is for admins.
+    assert client.get(one(about_person)).json()["available_actions"] == [
+        "RESTRICT_POSTING",
+        "WARN",
+    ]
+    assert api_as(UserFactory(platform_role="ADMIN")).get(one(about_person)).json()[
+        "available_actions"
+    ] == ["RESTRICT_POSTING", "SUSPEND", "WARN"]
     assert client.get(f"{QUEUE}{uuid.uuid4()}/").status_code == 404
 
 
@@ -412,7 +418,7 @@ def test_resolve_validates_input(api_as, payload, status, code):
     assert report.status == "OPEN" and not ModerationAction.objects.exists()
 
 
-def test_nothing_can_be_done_to_a_person_yet_except_dismiss(api_as):
+def test_an_action_meant_for_another_kind_of_thing_is_refused(api_as):
     report = report_on(UserFactory(), target_type="USER")
 
     response = api_as(moderator()).post(

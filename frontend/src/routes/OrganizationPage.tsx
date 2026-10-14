@@ -168,6 +168,11 @@ export function OrganizationPage() {
       )}
 
       <YourMembership organization={data} />
+      {data.viewer.role === "OWNER" && (
+        <p className="report-line">
+          <Link to={`/organizations/${data.id}/audit`}>Activity log</Link>
+        </p>
+      )}
       <ReportButton targetType="ORGANIZATION" targetId={data.id} what="organization" />
     </>
   );

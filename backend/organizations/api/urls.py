@@ -21,6 +21,11 @@ urlpatterns = [
         name="organization-member",
     ),
     path(
+        "organizations/<uuid:organization_id>/audit-logs/",
+        views.AuditLogView.as_view(),
+        name="organization-audit-logs",
+    ),
+    path(
         "organizations/<uuid:organization_id>/leave/",
         views.LeaveView.as_view(),
         name="organization-leave",

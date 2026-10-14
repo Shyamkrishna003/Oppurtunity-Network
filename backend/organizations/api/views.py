@@ -4,6 +4,7 @@ from uuid import UUID
 from django.db.models import QuerySet
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import generics, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -11,6 +12,9 @@ from rest_framework.serializers import BaseSerializer
 from rest_framework.throttling import BaseThrottle
 from rest_framework.views import APIView
 
+from audit import selectors as audit
+from audit.api.serializers import AuditLogSerializer
+from audit.models import AuditLog
 from common.throttles import ScopedThrottle
 from organizations import selectors, services
 from organizations.api import serializers
@@ -20,7 +24,7 @@ from organizations.models import (
     OrganizationMember,
     OrganizationRole,
 )
-from organizations.policies import can_manage
+from organizations.policies import can_manage, can_read_audit
 from users.api.utils import current_user
 from users.permissions import IsVerified
 
@@ -258,3 +262,25 @@ class DeclineInvitationView(APIView):
     def post(self, request: Request, token: str) -> Response:
         services.decline_invitation(user=current_user(request), token=token)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# What an organization's owners are shown of the records filed under it: its membership,
+# its opportunities, and what was done with the applications and registrations it received.
+# Not referrals, where who asked whom stays between those two until a referral is made, and
+# not which moderator acted on it.
+AUDIT_KINDS = ("organization.", "opportunity.", "application.", "event.")
+
+
+class AuditLogView(generics.ListAPIView[AuditLog]):
+    """What has been done in the organization, newest first. For its owners."""
+
+    serializer_class = AuditLogSerializer
+
+    def get_queryset(self) -> QuerySet[AuditLog]:
+        if getattr(self, "swagger_fake_view", False):
+            return AuditLog.objects.none()
+        user = current_user(self.request)
+        organization = selectors.get_organization(user, self.kwargs["organization_id"])
+        if not can_read_audit(selectors.get_membership(user, organization)):
+            raise PermissionDenied()
+        return audit.search(organization_id=organization.pk, kinds=AUDIT_KINDS)

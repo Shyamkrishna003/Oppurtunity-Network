@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "notifications",
     "realtime",
     "audit",
+    "analytics",
 ]
 
 MIDDLEWARE = [

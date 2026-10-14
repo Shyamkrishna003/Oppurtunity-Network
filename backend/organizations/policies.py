@@ -30,6 +30,11 @@ def can_manage(membership: OrganizationMember | None) -> bool:
     return _role(membership) in _MANAGERS
 
 
+def can_read_audit(membership: OrganizationMember | None) -> bool:
+    """Read the record of what was done in the organization. Owners only: it names people."""
+    return _role(membership) == OrganizationRole.OWNER
+
+
 def assignable_roles(membership: OrganizationMember | None) -> frozenset[OrganizationRole]:
     """Roles the actor may invite someone as, or give to an existing member."""
     role = _role(membership)

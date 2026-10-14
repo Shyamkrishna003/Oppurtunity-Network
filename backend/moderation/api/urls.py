@@ -26,5 +26,40 @@ urlpatterns = [
         views.ResolveView.as_view(),
         name="moderation-report-resolve",
     ),
+    path(
+        "communities/<uuid:community_id>/reports/",
+        views.CommunityReportQueueView.as_view(),
+        name="community-reports",
+    ),
+    path(
+        "communities/<uuid:community_id>/reports/<uuid:report_id>/",
+        views.CommunityReportDetailView.as_view(),
+        name="community-report",
+    ),
+    path(
+        "communities/<uuid:community_id>/reports/<uuid:report_id>/claim/",
+        views.CommunityClaimView.as_view(),
+        name="community-report-claim",
+    ),
+    path(
+        "communities/<uuid:community_id>/reports/<uuid:report_id>/dismiss/",
+        views.CommunityDismissView.as_view(),
+        name="community-report-dismiss",
+    ),
+    path(
+        "communities/<uuid:community_id>/reports/<uuid:report_id>/remove/",
+        views.CommunityRemoveView.as_view(),
+        name="community-report-remove",
+    ),
+    path(
+        "communities/<uuid:community_id>/reports/<uuid:report_id>/escalate/",
+        views.CommunityEscalateView.as_view(),
+        name="community-report-escalate",
+    ),
     path("moderation/actions/", views.ActView.as_view(), name="moderation-actions"),
+    path(
+        "moderation/targets/<str:target_type>/<uuid:target_id>/",
+        views.TargetDetailView.as_view(),
+        name="moderation-target",
+    ),
 ]

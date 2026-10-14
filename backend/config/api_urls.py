@@ -18,6 +18,8 @@ urlpatterns = [
     path("", include("messaging.api.urls")),
     path("", include("moderation.api.urls")),
     path("", include("notifications.api.urls")),
+    path("", include("audit.api.urls")),
+    path("", include("analytics.api.urls")),
     path("", include("realtime.api")),
     path("files/<str:token>/", storage.download, name="private-download"),
     # Keep last: unknown API paths get the standard error envelope, in DEBUG too.

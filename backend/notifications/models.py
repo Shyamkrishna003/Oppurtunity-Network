@@ -36,7 +36,11 @@ class NotificationType(models.TextChoices):
     EVENT_CANCELLED = "EVENT_CANCELLED", "An event you registered for was cancelled"
     EVENT_REMINDER = "EVENT_REMINDER", "An event you are going to starts soon"
     REPORT_REVIEWED = "REPORT_REVIEWED", "A report you made was reviewed"
+    COMMUNITY_REPORT_FILED = "COMMUNITY_REPORT_FILED", "Something was reported in your community"
     OPPORTUNITY_MODERATED = "OPPORTUNITY_MODERATED", "A moderator acted on your opportunity"
+    ACCOUNT_MODERATED = "ACCOUNT_MODERATED", "A moderator acted on your account"
+    ORGANIZATION_MODERATED = "ORGANIZATION_MODERATED", "A moderator acted on your organization"
+    COMMUNITY_MODERATED = "COMMUNITY_MODERATED", "A moderator acted on your community"
 
 
 class Category(models.TextChoices):

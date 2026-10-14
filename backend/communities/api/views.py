@@ -5,7 +5,7 @@ from uuid import UUID
 from django.db.models import QuerySet
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import generics, status
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -13,6 +13,9 @@ from rest_framework.serializers import BaseSerializer
 from rest_framework.throttling import BaseThrottle
 from rest_framework.views import APIView
 
+from audit import selectors as audit
+from audit.api.serializers import AuditLogSerializer
+from audit.models import AuditLog
 from common.throttles import ScopedThrottle
 from communities import policies, selectors, services
 from communities.api import serializers
@@ -246,3 +249,25 @@ class InvitationView(APIView):
         return Response(
             serializers.CommunityMemberSerializer(member).data, status=status.HTTP_201_CREATED
         )
+
+
+# What a community's owners are shown of the records filed under it: its membership and
+# rules, what its moderators decided about shared opportunities, and how they handled
+# reports. Never who reported, and not which platform moderator acted on the community.
+AUDIT_KINDS = ("community.", "opportunity.share_", "report.")
+
+
+class AuditLogView(generics.ListAPIView[AuditLog]):
+    """What has been done in the community, newest first. For its owners."""
+
+    serializer_class = AuditLogSerializer
+
+    def get_queryset(self) -> QuerySet[AuditLog]:
+        if getattr(self, "swagger_fake_view", False):
+            return AuditLog.objects.none()
+        user = current_user(self.request)
+        community = selectors.get_community(user, self.kwargs["community_id"])
+        actor = policies.actor_for(user.pk, selectors.get_membership(user, community))
+        if not policies.can_read_audit(actor):
+            raise PermissionDenied()
+        return audit.search(community_id=community.pk, kinds=AUDIT_KINDS)

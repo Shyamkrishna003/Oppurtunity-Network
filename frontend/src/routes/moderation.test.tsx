@@ -2,7 +2,13 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { MyReport, Report, ReportDetail } from "../features/moderation/api";
+import type {
+  ModerationAction,
+  MyReport,
+  Report,
+  ReportDetail,
+  TargetDetail,
+} from "../features/moderation/api";
 import type { OpportunityDetail } from "../features/opportunities/types";
 import { makeMe, makeSession, makeViewer } from "../test/fixtures";
 import { apiError, json, mockApi } from "../test/mockApi";
@@ -236,6 +242,7 @@ describe("deciding a report", () => {
           id: "a-1",
           action_type: "HIDE",
           reason: "Asks applicants for a fee.",
+          expires_at: null,
           actor: grace,
           created_at: "2026-10-11T09:00:00Z",
         },
@@ -269,18 +276,23 @@ describe("deciding a report", () => {
     await user.type(within(decide).getByLabelText("Reason"), "Asks applicants for a fee.");
     await user.click(act);
 
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("Hide this opportunity?"));
+    // Hiding can be undone, so it is not second-guessed with a question.
+    expect(window.confirm).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(api.last(`POST ${ONE}resolve/`)?.body).toEqual({
         action: "HIDE",
         reason: "Asks applicants for a fee.",
+        until: null,
       }),
     );
-    // Decided: the choices go, the history shows what was done, and it can be put back.
+    // Decided: the choices go, the history shows what was done, and there is a way on to
+    // where it can be put back.
     await waitFor(() => expect(screen.queryByRole("region", { name: "Decide" })).toBeNull());
     const history = screen.getByRole("region", { name: "What moderators have done to it" });
     expect(history).toHaveTextContent("Hidden by Grace Hopper");
-    expect(within(history).getByRole("button", { name: "Restore" })).toBeDisabled();
+    expect(
+      within(history).getByRole("link", { name: "Moderate this opportunity" }),
+    ).toHaveAttribute("href", "/moderation/targets/OPPORTUNITY/opp-1");
   });
 
   it("asks before removing for good, and does nothing if that is declined", async () => {
@@ -347,34 +359,151 @@ describe("deciding a report", () => {
     await user.click(screen.getByRole("button", { name: "No action needed" }));
     expect(await screen.findByText(/do not have permission/)).toBeVisible();
   });
+});
 
-  it("restores something hidden, with a reason", async () => {
-    const hide = {
-      id: "a-1",
-      action_type: "HIDE" as const,
-      reason: "Fee.",
-      actor: grace,
-      created_at: "2026-10-11T09:00:00Z",
-    };
-    const api = mockApi({
-      [`GET ${ONE}`]: () =>
-        json(report({ status: "ACTION_TAKEN", available_actions: [], actions: [hide] })),
-      "POST /api/v1/moderation/actions/": () => json({ ...hide, action_type: "RESTORE" }, 201),
-      [QUEUE]: () => page([]),
+describe("moderating something directly", () => {
+  const ACT = "POST /api/v1/moderation/actions/";
+  const done = (
+    action_type: ModerationAction["action_type"],
+    reason: string,
+  ): ModerationAction => ({
+    id: `a-${action_type}`,
+    action_type,
+    reason,
+    expires_at: null,
+    actor: grace,
+    created_at: "2026-10-11T09:00:00Z",
+  });
+  const view = (overrides: Partial<TargetDetail> = {}): TargetDetail => ({
+    target,
+    standing: [],
+    possible_actions: [],
+    timed_actions: [],
+    actions: [],
+    ...overrides,
+  });
+
+  it("shows how something stands and restores what was hidden", async () => {
+    const hide = done("HIDE", "Fee.");
+    let current = view({
+      standing: ["Hidden"],
+      possible_actions: ["REMOVE", "RESTORE"],
+      actions: [hide],
     });
-    renderApp("/moderation/reports/r-1", MODERATOR);
+    const api = mockApi({
+      "GET /api/v1/moderation/targets/OPPORTUNITY/opp-1/": () => json(current),
+      [ACT]: () => {
+        const restore = done("RESTORE", "Poster fixed it.");
+        current = view({ possible_actions: ["HIDE", "REMOVE"], actions: [restore, hide] });
+        return json(restore, 201);
+      },
+    });
+    renderApp("/moderation/targets/OPPORTUNITY/opp-1", MODERATOR);
     const user = userEvent.setup();
 
-    await user.type(await screen.findByLabelText("Reason for restoring"), "Poster fixed it.");
-    await user.click(screen.getByRole("button", { name: "Restore" }));
+    expect(await screen.findByRole("heading", { name: "Moderate opportunity" })).toBeVisible();
+    expect(
+      within(screen.getByRole("list", { name: "How it stands" })).getByText("Hidden"),
+    ).toBeVisible();
+    await user.selectOptions(screen.getByLabelText("What to do"), "RESTORE");
+    // Putting something back has no end date to ask for.
+    expect(screen.queryByLabelText("Until (optional)")).toBeNull();
+    await user.type(screen.getByLabelText("Reason"), "Poster fixed it.");
+    await user.click(screen.getByRole("button", { name: "Take action" }));
 
     await waitFor(() =>
-      expect(api.last("POST /api/v1/moderation/actions/")?.body).toEqual({
+      expect(api.last(ACT)?.body).toEqual({
         target_type: "OPPORTUNITY",
         target_id: "opp-1",
         action: "RESTORE",
         reason: "Poster fixed it.",
+        until: null,
       }),
     );
+    expect(await screen.findByText(/Nothing is in force/)).toBeVisible();
+    const history = screen.getByRole("region", { name: "What moderators have done" });
+    expect(within(history).getAllByRole("listitem")[0]).toHaveTextContent(
+      "Restored by Grace Hopper",
+    );
+    // The form starts afresh for whatever is possible now.
+    expect(screen.getByLabelText("Reason")).toHaveValue("");
+  });
+
+  it("suspends a person until a date, after asking", async () => {
+    const person = { type: "USER" as const, id: "u-9", name: "Mallory", url: "/users/u-9" };
+    const api = mockApi({
+      "GET /api/v1/moderation/targets/USER/u-9/": () =>
+        json(
+          view({
+            target: person,
+            possible_actions: ["RESTRICT_POSTING", "SUSPEND", "WARN"],
+            timed_actions: ["RESTRICT_POSTING", "SUSPEND"],
+          }),
+        ),
+      [ACT]: () => json(done("SUSPEND", "Fraud."), 201),
+    });
+    renderApp("/moderation/targets/USER/u-9", makeSession(makeMe({ platform_role: "ADMIN" })));
+    const user = userEvent.setup();
+
+    await user.selectOptions(await screen.findByLabelText("What to do"), "WARN");
+    expect(screen.queryByLabelText("Until (optional)")).toBeNull();
+    await user.selectOptions(screen.getByLabelText("What to do"), "SUSPEND");
+    const until = screen.getByLabelText("Until (optional)");
+    await user.type(until, "2030-01-15");
+    await user.type(screen.getByLabelText("Reason"), "Fraud.");
+    expect(screen.getByText(/The person is shown this/)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Take action" }));
+
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("signed out everywhere"));
+    await waitFor(() => expect(api.count(ACT)).toBe(1));
+    const sent = api.last(ACT)?.body as { action: string; until: string; target_type: string };
+    expect([sent.target_type, sent.action]).toEqual(["USER", "SUSPEND"]);
+    // The end of the chosen day, as an instant.
+    expect(new Date(sent.until).toISOString()).toBe(sent.until);
+    expect(new Date(sent.until).getTime()).toBeGreaterThan(
+      new Date("2030-01-15T00:00:00").getTime(),
+    );
+    expect(new Date(sent.until).getTime()).toBeLessThan(new Date("2030-01-16T00:00:00").getTime());
+  });
+
+  it("says when there is nothing the viewer can do, and why an action was refused", async () => {
+    mockApi({
+      "GET /api/v1/moderation/targets/USER/u-9/": () =>
+        json(view({ target: { ...target, type: "USER", url: "/users/u-9" } })),
+    });
+    renderApp("/moderation/targets/USER/u-9", MODERATOR);
+    expect(await screen.findByText(/nothing you can do to this person/)).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Take action" })).toBeNull();
+
+    cleanup();
+    vi.unstubAllGlobals();
+    mockApi({
+      "GET /api/v1/moderation/targets/OPPORTUNITY/opp-1/": () =>
+        json(view({ possible_actions: ["HIDE"] })),
+      [ACT]: () => apiError(409, "action_not_possible", "This cannot be done as things now stand."),
+    });
+    renderApp("/moderation/targets/OPPORTUNITY/opp-1", MODERATOR);
+    const user = userEvent.setup();
+    await user.selectOptions(await screen.findByLabelText("What to do"), "HIDE");
+    await user.type(screen.getByLabelText("Reason"), "Scam.");
+    await user.click(screen.getByRole("button", { name: "Take action" }));
+    expect(await screen.findByText("This cannot be done as things now stand.")).toBeVisible();
+  });
+
+  it("is linked from the page of what is moderated, for staff only", async () => {
+    const JOB = "GET /api/v1/opportunities/opp-1/";
+    mockApi({ [JOB]: () => json(job()) });
+    renderApp("/opportunities/opp-1", MODERATOR);
+    expect(await screen.findByRole("link", { name: "Moderate this job" })).toHaveAttribute(
+      "href",
+      "/moderation/targets/OPPORTUNITY/opp-1",
+    );
+
+    cleanup();
+    vi.unstubAllGlobals();
+    mockApi({ [JOB]: () => json(job()) });
+    renderApp("/opportunities/opp-1", makeSession());
+    await screen.findByRole("button", { name: "Report this job" });
+    expect(screen.queryByRole("link", { name: /Moderate this/ })).toBeNull();
   });
 });
