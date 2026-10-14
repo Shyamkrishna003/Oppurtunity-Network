@@ -9,4 +9,14 @@ urlpatterns = [
         views.OpportunityNumbersView.as_view(),
         name="opportunity-stats",
     ),
+    path(
+        "organizations/<uuid:organization_id>/stats/",
+        views.OrganizationNumbersView.as_view(),
+        name="organization-stats",
+    ),
+    path(
+        "communities/<uuid:community_id>/stats/",
+        views.CommunityNumbersView.as_view(),
+        name="community-stats",
+    ),
 ]

@@ -20,7 +20,7 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from analytics import policies
-from analytics.models import DailyOpportunityViews
+from analytics.models import DailyOpportunityViews, OpportunityStats
 from applications.models import Application, ApplicationStatus
 from communities.models import Community
 from events.models import EventRegistration, RegistrationStatus
@@ -152,6 +152,19 @@ def numbers_for(opportunity_ids: Iterable[UUID]) -> dict[UUID, dict[str, int]]:
         row["pk"]: {name: row[f"n_{name}"] for name in NUMBERS}
         for row in counted.values("pk", *(f"n_{name}" for name in NUMBERS))
     }
+
+
+def most_popular(opportunities: QuerySet[Opportunity], limit: int) -> QuerySet[OpportunityStats]:
+    """The stored numbers of the open ones among ``opportunities`` that draw the most."""
+    return (
+        OpportunityStats.objects.filter(
+            opportunity__in=opportunities.filter(
+                status=OpportunityStatus.PUBLISHED, moderation_status=ModerationStatus.VISIBLE
+            )
+        )
+        .select_related("opportunity")
+        .order_by("-popularity_score", "-opportunity__published_at")[:limit]
+    )
 
 
 def views_by_day(opportunity_id: UUID, days: int) -> list[tuple[date, int]]:

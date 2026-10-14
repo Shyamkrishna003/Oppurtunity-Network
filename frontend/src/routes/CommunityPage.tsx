@@ -259,6 +259,7 @@ export function CommunityPage() {
           <h2 id="running-heading">Running the community</h2>
           <p className="button-row">
             <Link to={`/communities/${data.id}/reports`}>Reports from members</Link>
+            {viewer.can_manage && <Link to={`/communities/${data.id}/insights`}>Insights</Link>}
             {viewer.role === "OWNER" && (
               <Link to={`/communities/${data.id}/audit`}>Activity log</Link>
             )}

@@ -55,6 +55,76 @@ class DayViewsSerializer(serializers.Serializer[Any]):
     views = serializers.IntegerField()
 
 
+class FunnelStepSerializer(serializers.Serializer[Any]):
+    # What was reached: "views", "applied", "interview", "attended"…
+    key = serializers.CharField()
+    # How many reached it, whatever happened to them afterwards.
+    count = serializers.IntegerField()
+
+
+class FunnelSerializer(serializers.Serializer[Any]):
+    # "applications", "referrals" or "registrations".
+    name = serializers.CharField()
+    steps = FunnelStepSerializer(many=True)
+
+
+class TopOpportunitySerializer(serializers.Serializer[Any]):
+    id = serializers.UUIDField()
+    title = serializers.CharField()
+    type = serializers.CharField()
+    views = serializers.IntegerField()
+    applications = serializers.IntegerField()
+    registrations = serializers.IntegerField()
+
+
+class PostingCountsSerializer(_Counts):
+    drafts = serializers.IntegerField()
+    published = serializers.IntegerField()
+    # Closed, expired or archived.
+    finished = serializers.IntegerField()
+
+
+class OrganizationNumbersSerializer(serializers.Serializer[Any]):
+    """How everything an organization posted is doing, for the people who post for it."""
+
+    opportunities = PostingCountsSerializer()
+    funnels = FunnelSerializer(many=True)
+    # Its open opportunities that draw the most, by the stored popularity score.
+    top = TopOpportunitySerializer(many=True)
+
+
+class CommunityMemberCountsSerializer(_Counts):
+    active = serializers.IntegerField()
+    asked_to_join = serializers.IntegerField()
+    invited = serializers.IntegerField()
+
+
+class CommunitySharingCountsSerializer(_Counts):
+    # Everything ever offered to the community.
+    offered = serializers.IntegerField()
+    waiting = serializers.IntegerField()
+    declined = serializers.IntegerField()
+    removed = serializers.IntegerField()
+    # Approved and still open: what members can find now.
+    shown = serializers.IntegerField()
+    jobs_shown = serializers.IntegerField()
+    events_shown = serializers.IntegerField()
+    featured = serializers.IntegerField()
+
+
+class CommunityReportCountsSerializer(_Counts):
+    waiting = serializers.IntegerField()
+    decided = serializers.IntegerField()
+
+
+class CommunityNumbersSerializer(serializers.Serializer[Any]):
+    """How a community is doing, for its owners and admins."""
+
+    members = CommunityMemberCountsSerializer()
+    sharing = CommunitySharingCountsSerializer()
+    reports = CommunityReportCountsSerializer()
+
+
 class OpportunityNumbersSerializer(_Counts):
     """How one opportunity is doing, for the people who manage it."""
 
@@ -72,6 +142,8 @@ class OpportunityNumbersSerializer(_Counts):
     popularity_score = serializers.IntegerField()
     # The last fourteen days, oldest first.
     views_by_day = DayViewsSerializer(many=True)
+    # How far people got: applications and referrals for a job, registrations for an event.
+    funnels = FunnelSerializer(many=True)
 
 
 class PlatformTotalsSerializer(serializers.Serializer[Any]):

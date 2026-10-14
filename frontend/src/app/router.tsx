@@ -22,6 +22,7 @@ import { ModerationTargetPage } from "../routes/ModerationTargetPage";
 import { MyReportsPage } from "../routes/MyReportsPage";
 import { ForgotPasswordPage } from "../routes/ForgotPasswordPage";
 import { HomePage } from "../routes/HomePage";
+import { CommunityInsightsPage, OrganizationInsightsPage } from "../routes/InsightsPage";
 import { LoginPage } from "../routes/LoginPage";
 import { CheckInPage } from "../routes/CheckInPage";
 import { MyEventsPage } from "../routes/MyEventsPage";
@@ -105,6 +106,14 @@ export const routes: RouteObject[] = [
               {
                 path: "organizations/:organizationId/audit",
                 element: <TenantAuditPage kind="organization" />,
+              },
+              {
+                path: "communities/:communityId/insights",
+                element: <CommunityInsightsPage />,
+              },
+              {
+                path: "organizations/:organizationId/insights",
+                element: <OrganizationInsightsPage />,
               },
               { path: "admin", element: <AdminPage /> },
               { path: "admin/audit", element: <AuditLogPage /> },
