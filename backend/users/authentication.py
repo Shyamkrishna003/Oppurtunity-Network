@@ -26,6 +26,14 @@ class AccessTokenAuthentication(BaseAuthentication):
         user = User.objects.select_related("profile").filter(pk=user_id, is_active=True).first()
         if user is None:
             raise exceptions.AuthenticationFailed("Invalid or expired access token.")
+        if user.is_suspended:
+            # An access token issued before the suspension stops working at once. (Raised as
+            # the framework's own exception: this module is imported while the framework is
+            # still loading its settings, so it cannot import our error classes.)
+            raise exceptions.PermissionDenied(
+                "This account has been suspended. Check your email for the reason.",
+                code="account_suspended",
+            )
         return user, None
 
     def authenticate_header(self, request: Request) -> str:

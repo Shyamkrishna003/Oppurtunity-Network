@@ -255,6 +255,18 @@ export function CommunityPage() {
       </section>
 
       {viewer.can_review_requests && (
+        <section className="card" aria-labelledby="running-heading">
+          <h2 id="running-heading">Running the community</h2>
+          <p className="button-row">
+            <Link to={`/communities/${data.id}/reports`}>Reports from members</Link>
+            {viewer.role === "OWNER" && (
+              <Link to={`/communities/${data.id}/audit`}>Activity log</Link>
+            )}
+          </p>
+        </section>
+      )}
+
+      {viewer.can_review_requests && (
         <section className="card" aria-labelledby="requests-heading">
           <h2 id="requests-heading">Requests to join</h2>
           <PeopleList community={data} status="PENDING" />

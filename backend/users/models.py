@@ -5,6 +5,7 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from django.contrib.postgres.indexes import GinIndex
 from django.db import models, transaction
 from django.db.models.functions import Lower, Upper
+from django.utils import timezone
 
 from common.choices import ExperienceLevel, WorkMode
 from common.models import TimestampedModel, UUIDModel
@@ -67,6 +68,12 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
     )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    # Set by moderators. While one lies in the future the user is suspended (cannot sign in
+    # or use the API) or cannot post. They lapse by themselves when the time passes; "until
+    # further notice" is stored as a time far in the future. On the user row itself because
+    # every request already loads it, so enforcing them costs no extra query.
+    suspended_until = models.DateTimeField(null=True, blank=True)
+    posting_restricted_until = models.DateTimeField(null=True, blank=True)
 
     objects = UserManager()
 
@@ -96,6 +103,15 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
     @property
     def is_email_verified(self) -> bool:
         return self.email_verified_at is not None
+
+    @property
+    def is_suspended(self) -> bool:
+        return self.suspended_until is not None and self.suspended_until > timezone.now()
+
+    @property
+    def is_posting_restricted(self) -> bool:
+        until = self.posting_restricted_until
+        return until is not None and until > timezone.now()
 
 
 class ProfileVisibility(models.TextChoices):

@@ -24,7 +24,7 @@ from opportunities.models import (
     OpportunityCommunity,
     OpportunityStatus,
 )
-from opportunities.services import lock_opportunity, require_manager
+from opportunities.services import lock_opportunity, require_manager, require_may_post
 from users.models import User
 
 MAX_COMMUNITIES_PER_SHARE = 10
@@ -133,6 +133,7 @@ def share(
     with transaction.atomic():
         opportunity = lock_opportunity(opportunity_id)
         require_manager(actor, opportunity)
+        require_may_post(actor)
         if opportunity.status != OpportunityStatus.PUBLISHED:
             raise BusinessRuleViolation(
                 "Publish the opportunity before sharing it with communities.",

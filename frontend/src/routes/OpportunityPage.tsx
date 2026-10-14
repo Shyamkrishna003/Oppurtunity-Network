@@ -430,6 +430,7 @@ export function OpportunityPage() {
         targetId={data.id}
         what={kind}
         own={data.viewer.can_manage}
+        shownIn={data.communities}
       />
     </>
   );

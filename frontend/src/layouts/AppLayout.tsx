@@ -126,6 +126,12 @@ function AccountMenu({ me }: { me: Me }) {
             Moderation
           </NavLink>
         )}
+        {me.platform_role === "ADMIN" && (
+          <NavLink to="/admin">
+            <Icon name="gear" />
+            Admin
+          </NavLink>
+        )}
         <div className="menu-divider" />
         <button
           type="button"

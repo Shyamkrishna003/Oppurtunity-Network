@@ -4,16 +4,21 @@ import { AnonymousOnly, RequireAuth } from "../features/auth/guards";
 import { Realtime } from "../features/realtime/Realtime";
 import { AppLayout } from "../layouts/AppLayout";
 import { PublicLayout } from "../layouts/PublicLayout";
+import { AdminPage } from "../routes/AdminPage";
 import { ApplicationPage } from "../routes/ApplicationPage";
 import { ApplicationsPage } from "../routes/ApplicationsPage";
+import { AuditLogPage } from "../routes/AuditLogPage";
 import { CommunitiesPage } from "../routes/CommunitiesPage";
 import { CommunityCreatePage } from "../routes/CommunityCreatePage";
 import { CommunityPage } from "../routes/CommunityPage";
+import { CommunityReportPage } from "../routes/CommunityReportPage";
+import { CommunityReportsPage } from "../routes/CommunityReportsPage";
 import { ConnectionsPage } from "../routes/ConnectionsPage";
 import { ConversationPage } from "../routes/ConversationPage";
 import { MessagesPage } from "../routes/MessagesPage";
 import { ModerationPage } from "../routes/ModerationPage";
 import { ModerationReportPage } from "../routes/ModerationReportPage";
+import { ModerationTargetPage } from "../routes/ModerationTargetPage";
 import { MyReportsPage } from "../routes/MyReportsPage";
 import { ForgotPasswordPage } from "../routes/ForgotPasswordPage";
 import { HomePage } from "../routes/HomePage";
@@ -42,6 +47,7 @@ import { SavedOpportunitiesPage } from "../routes/SavedOpportunitiesPage";
 import { SettingsAccountPage } from "../routes/SettingsAccountPage";
 import { SettingsNotificationsPage } from "../routes/SettingsNotificationsPage";
 import { SettingsProfilePage } from "../routes/SettingsProfilePage";
+import { TenantAuditPage } from "../routes/TenantAuditPage";
 import { VerifyEmailPage } from "../routes/VerifyEmailPage";
 
 export const routes: RouteObject[] = [
@@ -83,6 +89,25 @@ export const routes: RouteObject[] = [
               { path: "reports", element: <MyReportsPage /> },
               { path: "moderation", element: <ModerationPage /> },
               { path: "moderation/reports/:reportId", element: <ModerationReportPage /> },
+              {
+                path: "moderation/targets/:targetType/:targetId",
+                element: <ModerationTargetPage />,
+              },
+              { path: "communities/:communityId/reports", element: <CommunityReportsPage /> },
+              {
+                path: "communities/:communityId/reports/:reportId",
+                element: <CommunityReportPage />,
+              },
+              {
+                path: "communities/:communityId/audit",
+                element: <TenantAuditPage kind="community" />,
+              },
+              {
+                path: "organizations/:organizationId/audit",
+                element: <TenantAuditPage kind="organization" />,
+              },
+              { path: "admin", element: <AdminPage /> },
+              { path: "admin/audit", element: <AuditLogPage /> },
               { path: "messages/:conversationId", element: <ConversationPage /> },
               { path: "referrals", element: <ReferralsPage /> },
               { path: "referrals/:referralId", element: <ReferralPage /> },

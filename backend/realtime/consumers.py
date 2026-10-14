@@ -31,7 +31,10 @@ _MAX_INCOMING_BYTES = 256
 
 def _authenticate(ticket: str) -> UUID | None:
     user_id = tickets.redeem(ticket)
-    if user_id is None or not User.objects.filter(pk=user_id, is_active=True).exists():
+    if user_id is None:
+        return None
+    user = User.objects.filter(pk=user_id, is_active=True).first()
+    if user is None or user.is_suspended:
         return None
     return user_id
 

@@ -45,4 +45,9 @@ urlpatterns = [
         views.InvitationView.as_view(),
         name="community-invitations",
     ),
+    path(
+        "communities/<uuid:community_id>/audit-logs/",
+        views.AuditLogView.as_view(),
+        name="community-audit-logs",
+    ),
 ]

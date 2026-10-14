@@ -49,6 +49,11 @@ def can_review_requests(actor: Actor) -> bool:
     return actor.role in (_OWNER, _ADMIN, _MODERATOR)
 
 
+def can_read_audit(actor: Actor) -> bool:
+    """Read the record of what was done in the community. Owners only: it names people."""
+    return actor.role == _OWNER
+
+
 def assignable_roles(actor: Actor) -> frozenset[CommunityRole]:
     if actor.role == _OWNER:
         return frozenset(CommunityRole)

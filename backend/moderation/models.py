@@ -30,9 +30,20 @@ class ReportStatus(models.TextChoices):
 
 
 class ActionType(models.TextChoices):
+    # Opportunities.
     HIDE = "HIDE", "Hidden"
     REMOVE = "REMOVE", "Removed"
     RESTORE = "RESTORE", "Restored"
+    # People.
+    WARN = "WARN", "Warned"
+    RESTRICT_POSTING = "RESTRICT_POSTING", "Restricted from posting"
+    UNRESTRICT_POSTING = "UNRESTRICT_POSTING", "Posting restriction lifted"
+    # People, organizations and communities.
+    SUSPEND = "SUSPEND", "Suspended"
+    UNSUSPEND = "UNSUSPEND", "Suspension lifted"
+    # Organizations.
+    VERIFY = "VERIFY", "Verified"
+    UNVERIFY = "UNVERIFY", "Verification withdrawn"
 
 
 # One column per kind of target, so each is a real foreign key.
@@ -114,6 +125,15 @@ class Report(_Targeted, TimestampedModel):
     status = models.CharField(
         max_length=12, choices=ReportStatus.choices, default=ReportStatus.OPEN
     )
+    # Whose moderators decide it: this community's, or (when empty) the platform's. Only a
+    # report about an opportunity the community shows can be the community's.
+    scope_community = models.ForeignKey(
+        "communities.Community",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="reports",
+    )
     # The moderator who took it on.
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
@@ -138,6 +158,11 @@ class Report(_Targeted, TimestampedModel):
                 condition=models.Q(category__in=ReportCategory.values),
                 name="moderation_report_category_valid",
             ),
+            models.CheckConstraint(
+                condition=models.Q(scope_community__isnull=True)
+                | models.Q(target_type=TargetType.OPPORTUNITY),
+                name="moderation_report_community_scope_opportunity",
+            ),
             # A person has at most one report in progress about the same thing.
             *(
                 models.UniqueConstraint(
@@ -151,6 +176,10 @@ class Report(_Targeted, TimestampedModel):
         indexes = [
             # The queue: one status, oldest first.
             models.Index(fields=["status", "created_at"], name="moderation_report_queue"),
+            models.Index(
+                fields=["scope_community", "status", "created_at"],
+                name="moderation_report_community",
+            ),
             models.Index(fields=["reporter", "-created_at"], name="moderation_report_mine"),
             models.Index(fields=["target_opportunity", "status"], name="moderation_report_opp"),
         ]
@@ -168,12 +197,14 @@ class ModerationAction(_Targeted, UUIDModel):
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="moderation_actions"
     )
-    action_type = models.CharField(max_length=10, choices=ActionType.choices)
+    action_type = models.CharField(max_length=20, choices=ActionType.choices)
     # The report that led to it, when one did.
     report = models.ForeignKey(
         Report, null=True, blank=True, on_delete=models.SET_NULL, related_name="actions"
     )
     reason = models.CharField(max_length=500)
+    # For a suspension or a posting restriction: when it lapses. None means until lifted.
+    expires_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

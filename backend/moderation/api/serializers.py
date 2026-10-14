@@ -31,6 +31,9 @@ class FileReportSerializer(serializers.Serializer[Any]):
     description = serializers.CharField(
         max_length=2000, allow_blank=True, required=False, default="", trim_whitespace=True
     )
+    # Send it to this community's moderators instead of the platform's. Only for an
+    # opportunity the community shows, and only from one of its members.
+    community_id = serializers.UUIDField(required=False, allow_null=True, default=None)
 
 
 class MyReportSerializer(serializers.ModelSerializer[Report]):
@@ -76,7 +79,7 @@ class ActionSerializer(serializers.ModelSerializer[ModerationAction]):
 
     class Meta:
         model = ModerationAction
-        fields = ("id", "action_type", "reason", "actor", "created_at")
+        fields = ("id", "action_type", "reason", "expires_at", "actor", "created_at")
 
 
 class ReportDetailSerializer(ReportSerializer):
@@ -108,17 +111,74 @@ class ReportDetailSerializer(ReportSerializer):
         serializers.ListField(child=serializers.ChoiceField(choices=ActionType.choices))
     )
     def get_available_actions(self, report: Report) -> list[str]:
+        """What the caller could do in answer to this report: actions that fit the target as
+        it stands, that the caller's role allows, and that answer a complaint."""
         if report.status not in policies.IN_PROGRESS:
             return []
-        possible = policies.ACTIONS_FOR[TargetType(report.target_type)] & policies.RESOLVING
-        if report.target_type == TargetType.OPPORTUNITY:
-            current = report.target_opportunity.moderation_status  # type: ignore[union-attr]
-            possible = frozenset(
-                action
-                for action in possible
-                if current in policies.OPPORTUNITY_ALLOWED_FROM[action]
-            )
-        return sorted(possible)
+        open_to = policies.open_to(self.context["viewer"], report.target)
+        return sorted(open_to & policies.RESOLVING)
+
+
+class CommunityReportSerializer(MyReportSerializer):
+    """A report as a community's moderators see it. Not who made it: they are the reporter's
+    fellow members, and may be the ones it is about."""
+
+    assigned_to = PersonSerializer(allow_null=True)
+
+    class Meta(MyReportSerializer.Meta):
+        fields = (*MyReportSerializer.Meta.fields, "assigned_to", "resolution_note")
+
+
+class CommunityReportDetailSerializer(CommunityReportSerializer):
+    # Reports about the same thing still waiting in this community, this one included.
+    in_progress_on_target = serializers.SerializerMethodField()
+    # Whether the community still shows what was reported, so that it can be removed.
+    shown_in_community = serializers.SerializerMethodField()
+    # Whether the caller may decide this report. Not if it is about something they manage.
+    can_decide = serializers.SerializerMethodField()
+
+    class Meta(CommunityReportSerializer.Meta):
+        fields = (
+            *CommunityReportSerializer.Meta.fields,
+            "in_progress_on_target",
+            "shown_in_community",
+            "can_decide",
+        )
+
+    def get_in_progress_on_target(self, report: Report) -> int:
+        return selectors.in_progress_on(report)
+
+    def get_shown_in_community(self, report: Report) -> bool:
+        if report.scope_community_id is None:
+            return False
+        return selectors.is_shown_in(report.scope_community_id, report.target_opportunity_id)
+
+    def get_can_decide(self, report: Report) -> bool:
+        viewer = self.context["viewer"]
+        moderator = policies.Moderator(
+            viewer, manages_target=selectors.is_own(viewer, report.target)
+        )
+        return report.status in policies.IN_PROGRESS and policies.uninvolved(moderator, report)
+
+
+class RemoveSerializer(serializers.Serializer[Any]):
+    # For the community's other moderators. Whoever shared it is told only that it was removed.
+    reason = serializers.CharField(max_length=500, trim_whitespace=True)
+
+
+class TargetDetailSerializer(serializers.Serializer[Any]):
+    """Anything that can be moderated, as a moderator sees it."""
+
+    target = TargetSerializer()
+    # How it stands now, in words: "Suspended until 2026-11-01", "Hidden". Empty if nothing.
+    standing = serializers.ListField(child=serializers.CharField())
+    # What the caller could do to it now.
+    possible_actions = serializers.ListField(
+        child=serializers.ChoiceField(choices=ActionType.choices)
+    )
+    # Which of the possible actions take an end time.
+    timed_actions = serializers.ListField(child=serializers.ChoiceField(choices=ActionType.choices))
+    actions = ActionSerializer(many=True)
 
 
 class DismissSerializer(serializers.Serializer[Any]):
@@ -127,8 +187,10 @@ class DismissSerializer(serializers.Serializer[Any]):
 
 class ResolveSerializer(serializers.Serializer[Any]):
     action = serializers.ChoiceField(choices=ActionType.choices)
-    # Shown to the owners of what is acted on.
+    # Shown to the person, or to the owners of what is acted on.
     reason = serializers.CharField(max_length=500, trim_whitespace=True)
+    # For a suspension or a posting restriction: when it lapses. Omit for "until lifted".
+    until = serializers.DateTimeField(required=False, allow_null=True, default=None)
 
 
 class ActSerializer(ResolveSerializer):

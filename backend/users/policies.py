@@ -7,6 +7,10 @@ def is_platform_staff(user: User) -> bool:
     return user.platform_role in (PlatformRole.MODERATOR, PlatformRole.ADMIN)
 
 
+def is_platform_admin(user: User) -> bool:
+    return user.is_active and user.platform_role == PlatformRole.ADMIN
+
+
 def can_view_profile(
     viewer: User, profile: UserProfile, *, is_connection: bool, shares_community: bool
 ) -> bool:

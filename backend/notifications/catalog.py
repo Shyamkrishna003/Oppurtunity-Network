@@ -163,6 +163,48 @@ def _opportunity_moderated(notification: Notification) -> Rendered:
     return Rendered(title=title.format(**words), body=body.format(**words), url=_opportunity(p))
 
 
+def _lasting(payload: Payload) -> str:
+    return f"until {payload['until']}" if payload.get("until") else "until a moderator lifts it"
+
+
+def _account_moderated(notification: Notification) -> Rendered:
+    p = notification.payload
+    reason = f"Reason given: {p.get('reason', '')}"
+    wording = {
+        "WARN": ("A moderator has sent you a warning", reason),
+        "SUSPEND": (
+            "Your account has been suspended",
+            f"You cannot sign in {_lasting(p)}. {reason}",
+        ),
+        "UNSUSPEND": ("Your account is no longer suspended", f"You can sign in again. {reason}"),
+        "RESTRICT_POSTING": (
+            "You cannot post for now",
+            f"Publishing and sharing opportunities is switched off {_lasting(p)}. {reason}",
+        ),
+        "UNRESTRICT_POSTING": ("You can post again", reason),
+    }
+    title, body = wording.get(p.get("action", ""), wording["WARN"])
+    return Rendered(title=title, body=body, url="/settings/account")
+
+
+def _tenant_moderated(kind: str, path: str, id_key: str) -> Callable[[Notification], Rendered]:
+    """Wording for an action on an organization or a community, for its owners."""
+
+    def render(notification: Notification) -> Rendered:
+        p = notification.payload
+        name, reason = p.get("name", f"your {kind}"), f"Reason given: {p.get('reason', '')}"
+        wording = {
+            "SUSPEND": (f"{name} has been suspended", f"It cannot post or be joined. {reason}"),
+            "UNSUSPEND": (f"{name} is no longer suspended", reason),
+            "VERIFY": (f"{name} is now verified", "A verified mark is shown next to its name."),
+            "UNVERIFY": (f"{name} is no longer verified", reason),
+        }
+        title, body = wording.get(p.get("action", ""), wording["SUSPEND"])
+        return Rendered(title=title, body=body, url=f"/{path}/{p[id_key]}")
+
+    return render
+
+
 def _event_reminder(notification: Notification) -> Rendered:
     p = notification.payload
     soon = "starts in about an hour" if p.get("lead") == "1h" else "is tomorrow"
@@ -409,7 +451,25 @@ SPECS: dict[NotificationType, Spec] = {
             lambda p: "/reports",
         ),
     ),
+    T.COMMUNITY_REPORT_FILED: Spec(
+        Category.REVIEW,
+        True,
+        _simple(
+            "“{opportunity_title}” was reported in {community_name}",
+            "A member thinks it breaks the rules. Open the community's reports to decide.",
+            lambda p: f"/communities/{p['community_id']}/reports",
+        ),
+    ),
     T.OPPORTUNITY_MODERATED: Spec(Category.MODERATION, True, _opportunity_moderated),
+    T.ACCOUNT_MODERATED: Spec(Category.MODERATION, True, _account_moderated),
+    T.ORGANIZATION_MODERATED: Spec(
+        Category.MODERATION,
+        True,
+        _tenant_moderated("organization", "organizations", "organization_id"),
+    ),
+    T.COMMUNITY_MODERATED: Spec(
+        Category.MODERATION, True, _tenant_moderated("community", "communities", "community_id")
+    ),
     T.EVENT_CANCELLED: Spec(
         Category.EVENTS,
         True,

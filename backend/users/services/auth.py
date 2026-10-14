@@ -23,7 +23,7 @@ from common.errors import BadRequest, BusinessRuleViolation
 from common.tasks import enqueue
 from realtime.tasks import revoke_sessions
 from users import tasks, tokens
-from users.errors import InvalidCredentials, SessionExpired
+from users.errors import AccountSuspended, InvalidCredentials, SessionExpired
 from users.models import RefreshToken, User, UserManager
 
 logger = structlog.get_logger(__name__)
@@ -149,6 +149,9 @@ def login(*, email: str, password: str) -> Session:
         raise InvalidCredentials()
 
     cache.delete(_failure_key(email))
+    # Said only to someone who has just proved the account is theirs.
+    if user.is_suspended:
+        raise AccountSuspended()
     with transaction.atomic():
         User.objects.filter(pk=user.pk).update(last_login=timezone.now())
         record(action="user.logged_in", target=user, actor=user)
@@ -198,6 +201,7 @@ def refresh(*, refresh_token: str) -> Session:
             or token.revoked_at is not None
             or token.expires_at <= now
             or not token.user.is_active
+            or token.user.is_suspended
         ):
             raise SessionExpired()
 
@@ -245,6 +249,12 @@ def _revoke_all_sessions(user: User) -> None:
         revoked_at=timezone.now()
     )
     _close_sockets(user)
+
+
+def end_all_sessions(user: User) -> None:
+    """Sign the user out everywhere: every refresh token and every open socket. For when
+    someone else ends their access (a suspension). Call inside the change's transaction."""
+    _revoke_all_sessions(user)
 
 
 def _close_sockets(user: User) -> None:

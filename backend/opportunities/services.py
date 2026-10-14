@@ -35,6 +35,7 @@ from opportunities.models import (
 from opportunities.policies import LIFECYCLE, Manager
 from organizations.models import Organization, OrganizationStatus
 from taxonomy.models import Skill
+from users.errors import PostingRestricted
 from users.models import User
 
 MAX_SKILLS = 15
@@ -61,6 +62,13 @@ def require_manager(user: User, opportunity: Opportunity) -> Manager:
     if not policies.can_manage(user, opportunity, membership):
         raise PermissionDenied()
     return Manager(user)
+
+
+def require_may_post(user: User) -> None:
+    """Refuse someone a moderator has restricted from posting. They keep everything else:
+    what they already published stays up, and they can still close or edit it."""
+    if user.is_posting_restricted:
+        raise PostingRestricted()
 
 
 def _is_event(opportunity: Opportunity) -> bool:
@@ -139,6 +147,7 @@ def create_opportunity(
     """
     if not creator.is_email_verified:
         raise PermissionDenied("Verify your email address to do this.", code="email_not_verified")
+    require_may_post(creator)
     is_event = type == OpportunityType.EVENT
     if is_event:
         event = dict(event or {})
@@ -323,6 +332,7 @@ def publish(*, actor: User, opportunity_id: UUID) -> Opportunity:
         # missing fields; and publishing twice changes nothing the second time.
         if not LIFECYCLE.apply(opportunity, S.PUBLISHED, actor=manager):
             return opportunity
+        require_may_post(actor)
         _require_active_organization(opportunity.organization)
         errors = _publication_errors(opportunity)
         if errors:
