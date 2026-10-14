@@ -1178,6 +1178,56 @@ input[type="file"]::file-selector-button {
   font-variant-numeric: tabular-nums;
 }
 
+/* One number a day as thin bars: a single series in a single colour. */
+.daybars {
+  margin: 1.25rem 0 0;
+}
+
+.daybars figcaption {
+  margin-bottom: 0.5rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.daybars-plot {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  height: 5rem;
+  border-bottom: 2px solid var(--line);
+}
+
+/* The whole column is the hover target, not just the bar. */
+.daybars-day {
+  display: flex;
+  flex: 1 1 0;
+  align-items: flex-end;
+  justify-content: center;
+  min-width: 0;
+}
+
+.daybars-bar {
+  width: 100%;
+  max-width: 1.5rem;
+  border-radius: 4px 4px 0 0;
+  background: var(--accent);
+}
+
+@media (hover: hover) {
+  .daybars-day:hover {
+    background: var(--surface-2);
+  }
+}
+
+.daybars-axis {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  font-size: 0.8125rem;
+}
+
 .rules,
 .rule-editor {
   margin: 0 0 1rem;

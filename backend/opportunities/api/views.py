@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import BaseThrottle
 from rest_framework.views import APIView
 
+from analytics import services as analytics
 from applications import selectors as applications
 from common.throttles import ScopedThrottle
 from events import selectors as events
@@ -20,17 +21,24 @@ from opportunities.api.feed_views import feed_response
 from opportunities.models import CloseReason, Opportunity, OpportunityStatus, OpportunityType
 from referrals import selectors as referrals
 from users.api.utils import current_user
+from users.models import User
 from users.permissions import IsVerified
 
 
-def _detail(request: Request, opportunity_id: UUID, status_code: int = 200) -> Response:
-    """The opportunity as the caller now sees it, including what they may do with it."""
+def _detail(
+    request: Request, opportunity_id: UUID, status_code: int = 200, *, opened: bool = False
+) -> Response:
+    """The opportunity as the caller now sees it, including what they may do with it.
+    ``opened`` says the caller came to read it, which may count as a view."""
     opportunity = selectors.get_opportunity(request.user, opportunity_id)
     can_manage = request.user.is_authenticated and policies.can_manage(
         request.user,
         opportunity,
         selectors.get_membership(request.user, opportunity.organization_id),
     )
+    if opened:
+        viewer = request.user if isinstance(request.user, User) else None
+        analytics.note_view(viewer, opportunity, manages=can_manage)
     applying = applications.applying_state(request.user, opportunity)
     attending = events.attending_state(request.user, opportunity)
     context = {
@@ -104,7 +112,7 @@ class OpportunityDetailView(APIView):
 
     @extend_schema(responses=serializers.OpportunityDetailSerializer)
     def get(self, request: Request, opportunity_id: UUID) -> Response:
-        return _detail(request, opportunity_id)
+        return _detail(request, opportunity_id, opened=True)
 
     @extend_schema(
         request=serializers.OpportunityFieldsSerializer,

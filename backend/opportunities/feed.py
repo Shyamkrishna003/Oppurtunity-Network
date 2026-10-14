@@ -13,6 +13,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.contrib.postgres.search import SearchQuery, SearchRank, TrigramSimilarity
 from django.db.models import Exists, F, OuterRef, QuerySet, Value
 from django.db.models.fields import BooleanField
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from communities.models import CommunityMember, MemberStatus
@@ -37,8 +38,8 @@ RELEVANCE_WINDOW = timedelta(days=90)
 # How close a title must be to the search term to count as a near miss (0 to 1).
 TITLE_SIMILARITY = 0.3
 
-NEWEST, DEADLINE, RELEVANT = "newest", "deadline", "relevant"
-SORTS = (NEWEST, DEADLINE, RELEVANT)
+NEWEST, DEADLINE, RELEVANT, POPULAR = "newest", "deadline", "relevant", "popular"
+SORTS = (NEWEST, DEADLINE, RELEVANT, POPULAR)
 SCOPES = ("all", "communities")
 
 
@@ -186,6 +187,12 @@ def build_feed(
     elif sort == DEADLINE:
         # Soonest deadline first; opportunities with no deadline come last.
         opportunities = opportunities.order_by(F("deadline").asc(nulls_last=True), "-id")
+    elif sort == POPULAR:
+        # By the stored score (see ``analytics.policies.popularity``), which is rebuilt
+        # every few minutes. Something too new to have one yet counts as zero.
+        opportunities = opportunities.annotate(
+            popularity=Coalesce(F("stats__popularity_score"), 0)
+        ).order_by("-popularity", "-published_at", "-id")
     else:
         opportunities = opportunities.order_by("-published_at", "-id")
 
