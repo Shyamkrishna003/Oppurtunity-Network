@@ -1220,6 +1220,58 @@ input[type="file"]::file-selector-button {
   }
 }
 
+/* Steps of a funnel: a name, a bar for proportion, and the number itself. */
+.funnel {
+  margin: 1.5rem 0 0;
+}
+
+.funnel figcaption {
+  margin-bottom: 0.5rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.funnel ol {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.funnel li {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 11rem) minmax(0, 1fr) 3.5rem;
+  gap: 0.6rem;
+  align-items: center;
+  font-size: 0.9375rem;
+}
+
+.funnel-label {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.funnel-track {
+  height: 0.9rem;
+  border-radius: 4px;
+  background: var(--surface-2);
+}
+
+.funnel-bar {
+  display: block;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  background: var(--accent);
+}
+
+.funnel-count {
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 .daybars-axis {
   display: flex;
   justify-content: space-between;

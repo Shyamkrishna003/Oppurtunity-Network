@@ -187,6 +187,12 @@ export const SORT_LABELS: Record<FeedSort, string> = {
   deadline: "Closing soonest",
 };
 
+/** How many got how far. A step counts everyone who reached it, whatever came after. */
+export interface Funnel {
+  name: "applications" | "referrals" | "registrations";
+  steps: { key: string; count: number }[];
+}
+
 /** How an opportunity is doing, for the people who manage it. */
 export interface OpportunityNumbers {
   /** Different people who opened it, counted once a day each. Not its managers. */
@@ -201,6 +207,7 @@ export interface OpportunityNumbers {
   popularity_score: number;
   /** The last fourteen days, oldest first. */
   views_by_day: { date: string; views: number }[];
+  funnels: Funnel[];
 }
 
 export type ShareStatus = "PENDING" | "APPROVED" | "REJECTED" | "REMOVED";

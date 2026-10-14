@@ -168,9 +168,16 @@ export function OrganizationPage() {
       )}
 
       <YourMembership organization={data} />
-      {data.viewer.role === "OWNER" && (
+      {/* Members who post for the organization see how its postings do; owners also its log. */}
+      {data.viewer.role && data.viewer.role !== "MEMBER" && (
         <p className="report-line">
-          <Link to={`/organizations/${data.id}/audit`}>Activity log</Link>
+          <Link to={`/organizations/${data.id}/insights`}>Insights</Link>
+          {data.viewer.role === "OWNER" && (
+            <>
+              {" · "}
+              <Link to={`/organizations/${data.id}/audit`}>Activity log</Link>
+            </>
+          )}
         </p>
       )}
       <ReportButton targetType="ORGANIZATION" targetId={data.id} what="organization" />

@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 
+import { Figures } from "../components/Figures";
 import { Notice } from "../components/Notice";
 import { Splash } from "../components/Splash";
 import { usePlatformTotals } from "../features/admin/api";
@@ -8,23 +9,6 @@ import { ApiError } from "../services/http";
 
 const timeFormat = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
 const number = new Intl.NumberFormat();
-
-function Figures({ title, figures }: { title: string; figures: [label: string, value: number][] }) {
-  const id = `figures-${title.toLowerCase().replace(/\s+/g, "-")}`;
-  return (
-    <section className="card" aria-labelledby={id}>
-      <h2 id={id}>{title}</h2>
-      <dl className="figures">
-        {figures.map(([label, value]) => (
-          <div key={label} className="figure">
-            <dt>{label}</dt>
-            <dd>{number.format(value)}</dd>
-          </div>
-        ))}
-      </dl>
-    </section>
-  );
-}
 
 /** The platform at a glance, for its admins. */
 export function AdminPage() {

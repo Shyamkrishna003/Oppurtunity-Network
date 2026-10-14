@@ -237,12 +237,13 @@ def test_a_manager_sees_the_numbers_as_they_are_now(busy, api_as, django_assert_
     job, _ = busy
     client = api_as(job.creator)
 
-    with django_assert_max_num_queries(6):
+    with django_assert_max_num_queries(12):
         data = client.get(numbers(job)).json()
 
     # Counted live: nothing was rebuilt first.
     assert not OpportunityStats.objects.exists()
     by_day = data.pop("views_by_day")
+    assert [funnel["name"] for funnel in data.pop("funnels")] == ["applications", "referrals"]
     assert data == {
         "views": 117,
         "recent_views": 17,

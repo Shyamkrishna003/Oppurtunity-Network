@@ -62,6 +62,18 @@ const numbers: OpportunityNumbers = {
     date: `2026-10-${String(index + 1).padStart(2, "0")}`,
     views: index === 13 ? 40 : index,
   })),
+  funnels: [
+    {
+      name: "applications",
+      steps: [
+        // Fewer than applied: views started being counted later.
+        { key: "views", count: 4 },
+        { key: "applied", count: 8 },
+        { key: "interview", count: 2 },
+        { key: "hired", count: 0 },
+      ],
+    },
+  ],
 };
 
 afterEach(() => vi.unstubAllGlobals());
@@ -83,6 +95,16 @@ describe("an opportunity's numbers", () => {
     );
     expect(rows).toHaveLength(15);
     expect(rows[14]).toHaveTextContent("40");
+
+    const funnel = within(card).getByRole("figure", { name: "From opening it to being hired" });
+    const steps = within(funnel).getAllByRole("listitem");
+    expect(steps.map((step) => step.textContent)).toEqual([
+      "Opened it4",
+      // No share where the step before is smaller: it would be more than everyone.
+      "Applied8",
+      "Interview2, 25% of the step before",
+      "Hired0, 0% of the step before",
+    ]);
   });
 
   it("does not ask for them for anyone who does not manage it", async () => {

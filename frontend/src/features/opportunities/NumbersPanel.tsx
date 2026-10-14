@@ -1,4 +1,5 @@
 import { useOpportunityNumbers } from "./api";
+import { FunnelChart } from "./FunnelChart";
 import type { OpportunityDetail, OpportunityNumbers } from "./types";
 
 const number = new Intl.NumberFormat();
@@ -99,6 +100,9 @@ export function NumbersPanel({ opportunity }: { opportunity: OpportunityDetail }
         ))}
       </dl>
       <ViewsByDay days={numbers.views_by_day} />
+      {numbers.funnels.map((funnel) => (
+        <FunnelChart key={funnel.name} funnel={funnel} />
+      ))}
     </section>
   );
 }
